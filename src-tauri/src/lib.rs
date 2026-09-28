@@ -1,16 +1,24 @@
-//! SyncPilot — native desktop GUI for Resilio Sync (rslsync) on Linux.
+//! SyncPilot — native desktop shell for Resilio Sync (rslsync) on Linux.
+//!
+//! The main window embeds the official Resilio Web UI, served through a
+//! loopback proxy that injects the app-generated credentials (`proxy.rs`),
+//! so the interface and interaction model are exactly the official ones.
+//! SyncPilot owns everything around it: daemon lifecycle, tray, autostart,
+//! first-run installation of rslsync, and app updates.
 
 mod api;
 mod autostart;
 mod commands;
 mod manager;
+mod proxy;
 mod rslsync_config;
+mod rslsync_install;
 mod settings;
 
 use manager::{Manager, Phase};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{Emitter, Manager as _};
+use tauri::{Emitter, Manager as _, WebviewUrl, WebviewWindowBuilder};
 
 fn show_main_window(app: &tauri::AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
@@ -20,16 +28,51 @@ fn show_main_window(app: &tauri::AppHandle) {
     }
 }
 
+pub(crate) fn open_settings_window(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("settings") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return;
+    }
+    let _ = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
+        .title("SyncPilot Settings")
+        .inner_size(720.0, 640.0)
+        .resizable(true)
+        .build();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir).ok();
             let settings = settings::AppSettings::load(&dir);
-            app.manage(Manager::new(dir, settings));
+            app.manage(Manager::new(dir, settings.clone()));
+
+            // Auth-injecting proxy in front of the daemon's Web UI. The
+            // window (boot page) asks for its URL via the gui_url command.
+            {
+                let cfg = proxy::ProxyConfig {
+                    daemon_port: settings.webui_port,
+                    login: settings.webui_login.clone(),
+                    password: settings.webui_password.clone(),
+                };
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    match proxy::spawn(cfg).await {
+                        Ok(h) => {
+                            handle.manage(h);
+                        }
+                        Err(e) => {
+                            eprintln!("web ui proxy failed to start: {e}");
+                        }
+                    }
+                });
+            }
 
             build_tray(app)?;
 
@@ -49,8 +92,15 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // The settings window closes outright; the main window can hide
+            // to tray like the official clients do.
+            if window.label() == "settings" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    let _ = window.destroy();
+                }
+                return;
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // Behave like the official clients: optionally hide to tray.
                 let keep = window
                     .app_handle()
                     .state::<Manager>()
@@ -66,22 +116,13 @@ pub fn run() {
             commands::daemon_status,
             commands::daemon_start,
             commands::daemon_stop,
-            commands::sync_status,
-            commands::list_folders,
-            commands::list_known_peers,
-            commands::add_folder,
-            commands::remove_folder,
-            commands::pause_folder,
-            commands::pause_all,
-            commands::generate_secret,
-            commands::get_speed_limits,
-            commands::set_speed_limits,
-            commands::license_state,
-            commands::start_trial,
+            commands::gui_url,
+            commands::install_rslsync,
             commands::get_app_settings,
             commands::update_app_settings,
             commands::get_autostart,
             commands::set_autostart,
+            commands::open_settings,
             commands::pick_folder,
             commands::get_app_version,
         ])
@@ -104,11 +145,11 @@ pub fn run() {
 }
 
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Open SyncPilot", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open Resilio Sync", true, None::<&str>)?;
+    let prefs = MenuItem::with_id(app, "settings", "SyncPilot Settings…", true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
-    // No pause/resume entries: rslsync 3.x has no global-pause action.
     let quit = MenuItem::with_id(app, "quit", "Quit SyncPilot", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &sep, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &prefs, &sep, &quit])?;
 
     let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))
         .expect("bundled tray icon parses")
@@ -121,6 +162,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => show_main_window(app),
+            "settings" => open_settings_window(app),
             "quit" => {
                 let _ = app.emit("app://quit-requested", ());
                 app.exit(0);

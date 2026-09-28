@@ -16,7 +16,6 @@ pub struct AppSettings {
     pub webui_port: u16,
     pub webui_login: String,
     pub webui_password: String,
-    pub api_key: String,
     pub device_name: String,
     /// Start the rslsync daemon together with the app.
     pub autostart_daemon: bool,
@@ -35,7 +34,6 @@ impl Default for AppSettings {
             webui_port: 38889,
             webui_login: "syncpilot".into(),
             webui_password: random_token(20),
-            api_key: random_token(32),
             device_name: device_name(),
             autostart_daemon: true,
             restart_on_crash: true,
@@ -126,12 +124,10 @@ mod tests {
         let b = AppSettings::default();
         assert_eq!(a.webui_port, 38889);
         assert_eq!(a.webui_password.len(), 20);
-        assert_eq!(a.api_key.len(), 32);
         assert_ne!(
             a.webui_password, b.webui_password,
             "passwords must be random"
         );
-        assert_ne!(a.api_key, b.api_key, "api keys must be random");
     }
 
     #[test]
@@ -150,7 +146,7 @@ mod tests {
         assert_eq!(third.webui_port, 40001);
         assert_eq!(third.device_name, "bench");
         assert_eq!(
-            third.api_key, first.api_key,
+            third.webui_password, first.webui_password,
             "credentials must survive reload"
         );
         let _ = fs::remove_dir_all(&dir);

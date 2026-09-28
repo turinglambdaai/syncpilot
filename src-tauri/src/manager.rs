@@ -87,7 +87,7 @@ impl Manager {
 
     pub fn client(&self) -> ResilioClient {
         let s = self.settings.lock().unwrap();
-        ResilioClient::new(s.webui_port, &s.api_key, &s.webui_login, &s.webui_password)
+        ResilioClient::new(s.webui_port, &s.webui_login, &s.webui_password)
     }
 
     /// Find the rslsync binary: explicit setting, well-known paths, then $PATH.

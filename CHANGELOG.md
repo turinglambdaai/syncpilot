@@ -10,27 +10,23 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 - The conf no longer writes an `api_key`: rslsync 3.x validates keys against Resilio-issued signed keys and refuses to start on a locally generated one
 - `AppSettings::load` no longer forks credentials on first run: it used to persist one random password and return a second, leaving the app unable to authenticate to its own daemon until the next launch (verified live on a fresh install)
 
+## [0.2.0] - 2026-09-28
+
 ### Changed
 
-- API client rewritten from the `/api/v2` REST surface (which only accepts Resilio-issued keys) to the Web UI action API the official client uses: `POST /gui/token.html` for a CSRF token + `GET /gui/?token=…&action=…` with HTTP basic auth. Verified live against rslsync 3.1.2; transcript in `docs/api-verified.md`
-- Speed limits use the verified `setsettings&ulrate/dlrate` shape (KB/s, `-1` = unlimited); read-back via `settings`
-- Live transfer rates come from the speed charts (`getchartdata`, DOWNSPEED=1 / UPSPEED=2 per the official Web UI); daemon version is cached from `action=version`
-- Pause/resume controls removed — rslsync 3.x exposes no global or per-folder pause action
-- `scripts/verify-api.sh` rewritten to probe the action API (token, envelope errors, charts, license, folder lifecycle, settings round-trip, shutdown)
+- **The main window now embeds the official Resilio Web UI** — interface and interaction flow are exactly the official ones (including 3.x activation and identity setup, which the official UI owns). SyncPilot's own UI shrinks to a boot page (daemon handoff + first-run rslsync install) and a native settings window (tray → SyncPilot Settings…)
+- The official UI is served through a loopback auth-injecting proxy (`src-tauri/src/proxy.rs`): the webview never sees a basic-auth prompt, the daemon port never serves an unauthenticated request
+- API client slimmed to daemon lifecycle calls (ping / version / shutdown); folder, peer, transfer and license parsing is gone — the official UI talks to the daemon itself
+- Removed pause/resume controls and the custom overview/folder/add views; `api_key` removed from app settings
 
 ### Added
 
-- 3.x licensing gate surfaced to the UI: overview banner with daemon activation state (`getlicenseinfo.allowed_to_sync`) and a one-click free-trial start (`starttrialperiod`)
+- In-app updates via `tauri-plugin-updater`: signed updater artifacts in CI (`createUpdaterArtifacts`), `latest.json` static manifest assembled per release (`scripts/gen-update-manifest.py`), release-check key via `TAURI_SIGNING_PRIVATE_KEY` secrets
+- First-run install of the official rslsync binary straight from Resilio's CDN into `~/.local/bin` (sha256-pinned, `scripts/install-rslsync.sh` logic ported to Rust) — no separate manual download step
+- Tray menu entry "SyncPilot Settings…" opening a dedicated settings window
+
+### Removed
+
+- The custom sidebar/overview/folder-detail interface, replaced by the official Web UI
 
 ## [0.1.0] - 2026-09-28
-
-### Added
-
-- Daemon lifecycle: start/stop, adopt an already-running rslsync, crash watchdog with exponential backoff, optional keep-running-on-exit
-- Folder management: add by share key, create new with generated read & write / read-only keys, per-folder pause/resume, remove (files stay on disk)
-- Peer visibility: connection state, sync progress, per-peer transfer speeds
-- Global pause/resume and up/down speed limits
-- Live transfer-rate graph on the overview page
-- Tray icon with quick actions (open, pause/resume syncing, quit), hide-to-tray on close, XDG autostart
-- Loopback-only Web UI with app-generated credentials and `0600` rslsync.conf
-- CI (fmt/clippy/test) and release pipeline building deb/rpm/AppImage for x86_64 and aarch64

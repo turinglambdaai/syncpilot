@@ -1,9 +1,7 @@
-//! Tauri command layer: thin wrappers over the manager and API client,
-//! invoked from the frontend.
+//! Tauri command layer: daemon lifecycle, the embedded official Web UI
+//! handoff, first-run rslsync installation, and app settings.
 
-use crate::api::{Folder, GeneratedSecrets, KnownPeer, RuntimeStatus};
-use crate::autostart;
-use crate::manager::{DaemonStatus, Manager, Phase};
+use crate::manager::{DaemonStatus, Manager};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager as _};
 
@@ -11,10 +9,6 @@ type CmdResult<T> = Result<T, String>;
 
 fn manager<'a>(app: &'a AppHandle) -> tauri::State<'a, Manager> {
     app.state::<Manager>()
-}
-
-fn running(app: &AppHandle) -> bool {
-    manager(app).status().phase == Phase::Running
 }
 
 #[tauri::command]
@@ -36,122 +30,39 @@ pub async fn daemon_stop(app: AppHandle) -> CmdResult<DaemonStatus> {
     Ok(m.status())
 }
 
-#[tauri::command]
-pub async fn sync_status(app: AppHandle) -> CmdResult<Option<RuntimeStatus>> {
-    if !running(&app) {
-        return Ok(None);
-    }
-    Ok(manager(&app).client().status().await.ok())
-}
-
-#[tauri::command]
-pub async fn list_folders(app: AppHandle) -> CmdResult<Vec<Folder>> {
-    if !running(&app) {
-        return Ok(Vec::new());
-    }
-    manager(&app).client().folders_detailed().await
-}
-
-#[tauri::command]
-pub async fn list_known_peers(app: AppHandle) -> CmdResult<Vec<KnownPeer>> {
-    if !running(&app) {
-        return Ok(Vec::new());
-    }
-    manager(&app).client().known_peers().await
-}
-
-#[tauri::command]
-pub async fn add_folder(app: AppHandle, path: String, secret: Option<String>) -> CmdResult<()> {
-    manager(&app)
-        .client()
-        .add_folder(&path, secret.as_deref())
-        .await
-}
-
-#[tauri::command]
-pub async fn remove_folder(app: AppHandle, id: String) -> CmdResult<()> {
-    manager(&app).client().remove_folder(&id).await
-}
-
-#[tauri::command]
-pub async fn pause_folder(app: AppHandle, id: String, paused: bool) -> CmdResult<()> {
-    manager(&app).client().pause_folder(&id, paused).await
-}
-
-#[tauri::command]
-pub async fn pause_all(app: AppHandle, paused: bool) -> CmdResult<()> {
-    manager(&app).client().pause_all(paused).await
-}
-
-#[tauri::command]
-pub async fn generate_secret(app: AppHandle) -> CmdResult<GeneratedSecrets> {
-    manager(&app).client().generate_secrets().await
-}
-
-#[derive(Debug, Clone, Serialize, Default)]
-pub struct SpeedLimits {
-    /// KB/s; None = unlimited (rslsync reports -1).
-    pub up_kbps: Option<u64>,
-    pub down_kbps: Option<u64>,
-}
-
-#[tauri::command]
-pub async fn get_speed_limits(app: AppHandle) -> CmdResult<SpeedLimits> {
-    let settings = manager(&app).client().client_settings().await?;
-    // Verified field names on 3.x: `ulrate` / `dlrate`; -1 = unlimited.
-    let pick = |keys: &[&str]| -> Option<u64> {
-        for k in keys {
-            match settings.get(*k) {
-                Some(serde_json::Value::Number(n)) => {
-                    let v = n.as_i64().unwrap_or(-1);
-                    if v > 0 {
-                        return Some(v as u64);
-                    }
-                    return None;
-                }
-                _ => continue,
-            }
-        }
-        None
-    };
-    Ok(SpeedLimits {
-        up_kbps: pick(&["ulrate", "up", "upload"]),
-        down_kbps: pick(&["dlrate", "down", "download"]),
-    })
-}
-
-#[tauri::command]
-pub async fn set_speed_limits(
-    app: AppHandle,
-    up_kbps: Option<u64>,
-    down_kbps: Option<u64>,
-) -> CmdResult<()> {
-    // None = unlimited, which rslsync represents as -1 (0 is not accepted).
-    let up = up_kbps.map(|v| v as i64).unwrap_or(-1);
-    let down = down_kbps.map(|v| v as i64).unwrap_or(-1);
-    manager(&app).client().set_speed_limits(up, down).await
-}
-
 #[derive(Debug, Clone, Serialize)]
-pub struct LicenseState {
-    /// rslsync 3.x gates folder operations on this.
-    pub allowed_to_sync: bool,
-    pub can_use_trial: Option<bool>,
+pub struct GuiHandoff {
+    /// URL of the auth-injecting proxy serving the official Web UI.
+    pub url: String,
+    /// Daemon version, e.g. "3.1.2 (1076)".
+    pub version: Option<String>,
 }
 
+/// Make sure the daemon is up, then return the proxy URL the window should
+/// load. `phase == starting` is surfaced so the boot page can keep waiting.
 #[tauri::command]
-pub async fn license_state(app: AppHandle) -> CmdResult<LicenseState> {
-    let lic = manager(&app).client().license_info().await?;
-    Ok(LicenseState {
-        allowed_to_sync: lic.allowed_to_sync,
-        can_use_trial: lic.can_use_trial,
+pub async fn gui_url(app: AppHandle) -> CmdResult<GuiHandoff> {
+    let m = manager(&app);
+    m.ensure_running(&app).await?;
+    let proxy = app
+        .try_state::<crate::proxy::ProxyHandle>()
+        .ok_or_else(|| "proxy not started".to_string())?;
+    let version = m.client().version().await.ok();
+    Ok(GuiHandoff {
+        url: format!("{}/gui/", proxy.base_url),
+        version,
     })
 }
 
-/// Start the free trial period (rslsync 3.x activation path).
+/// Download the official rslsync binary into ~/.local/bin (first run).
 #[tauri::command]
-pub async fn start_trial(app: AppHandle) -> CmdResult<()> {
-    manager(&app).client().start_trial().await
+pub async fn install_rslsync(app: AppHandle) -> CmdResult<String> {
+    let path = crate::rslsync_install::install_official_binary().await?;
+    let path = path.to_string_lossy().into_owned();
+    // Bring the daemon up right away with the fresh binary.
+    let m = manager(&app);
+    m.ensure_running(&app).await?;
+    Ok(path)
 }
 
 #[tauri::command]
@@ -202,19 +113,40 @@ pub fn update_app_settings(
         s.close_to_tray = v;
     }
     m.update_settings(s);
+
+    // Keep the auth-injecting proxy in sync with new credentials/port.
+    let s = m.settings();
+    if let Some(proxy) = app.try_state::<crate::proxy::ProxyHandle>() {
+        proxy.update_config(crate::proxy::ProxyConfig {
+            daemon_port: s.webui_port,
+            login: s.webui_login.clone(),
+            password: s.webui_password.clone(),
+        });
+    }
     Ok(m.settings())
 }
 
 #[tauri::command]
 pub fn get_autostart() -> bool {
-    autostart::is_enabled()
+    crate::autostart::is_enabled()
 }
 
 #[tauri::command]
 pub fn set_autostart(enable: bool) -> CmdResult<bool> {
     let exec = std::env::current_exe().map_err(|e| format!("cannot resolve executable: {e}"))?;
-    autostart::set_enabled(enable, &exec).map_err(|e| format!("cannot update autostart: {e}"))?;
+    crate::autostart::set_enabled(enable, &exec)
+        .map_err(|e| format!("cannot update autostart: {e}"))?;
     Ok(enable)
+}
+
+#[tauri::command]
+pub fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[tauri::command]
+pub fn open_settings(app: AppHandle) {
+    crate::open_settings_window(&app);
 }
 
 #[tauri::command]
@@ -224,9 +156,4 @@ pub async fn pick_folder(app: AppHandle) -> CmdResult<Option<String>> {
     Ok(picked
         .and_then(|f| f.into_path().ok())
         .map(|p| p.to_string_lossy().into_owned()))
-}
-
-#[tauri::command]
-pub fn get_app_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
 }

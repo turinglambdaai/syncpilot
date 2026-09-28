@@ -758,3 +758,50 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ---- boot page (hands the window to the official Web UI) ---- */
+.boot-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.boot-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 48px;
+  max-width: 460px;
+  text-align: center;
+}
+.boot-logo {
+  width: 64px;
+  height: 64px;
+}
+.boot-title {
+  font-size: 22px;
+  margin: 0;
+  color: var(--text);
+}
+.boot-status {
+  font-weight: 600;
+  color: var(--text);
+}
+.boot-detail {
+  font-size: 13px;
+  color: var(--muted, #5b6472);
+  line-height: 1.5;
+}
+.boot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  width: 100%;
+  margin-top: 8px;
+}
+.settings-page {
+  background: var(--bg);
+}

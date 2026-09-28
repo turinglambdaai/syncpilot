@@ -56,30 +56,49 @@ npm run tauri dev
 ```
 
 First Rust build takes a few minutes. The SyncPilot window opens, spawns the
-rslsync daemon from `~/.local/bin/rslsync` (Settings → Daemon to change),
-and talks to it over loopback only.
+rslsync daemon from `~/.local/bin/rslsync` (change it in the tray →
+SyncPilot Settings… window), then hands the window over to the **official
+Resilio Web UI** served through the auth-injecting loopback proxy.
 
-To build installers: `npm run tauri build` (deb / rpm / AppImage).
+To build installers: `TAURI_SIGNING_PRIVATE_KEY=/path/to/key npm run tauri
+build` (deb / rpm / AppImage + signed `.AppImage.sig` updater artifacts).
+Without the signing key env the bundle step fails — set a throwaway key for
+local builds, the real one only lives in the release environment.
 
 ## Layout
 
 ```
-src/               frontend (vanilla TS + Vite): sidebar, overview, folder
-                   detail, add-folder wizard, settings
+src/               frontend (vanilla TS + Vite): boot page (daemon handoff,
+                   first-run rslsync install) + settings window page
 src-tauri/src/     Rust backend:
-  api.rs           rslsync client for the Web UI action API — CSRF token
-                   handshake, envelope handling and lenient response
-                   parsing all live here (see docs/api-verified.md)
+  proxy.rs         loopback auth-injecting reverse proxy serving the
+                   official Web UI to the webview without login prompts
+  api.rs           minimal rslsync client (ping/version/shutdown) for the
+                   Web UI action API (see docs/api-verified.md)
   manager.rs       daemon lifecycle: spawn/adopt/supervise/stop
+  rslsync_install.rs first-run download of the official rslsync binary
+                   (sha256-pinned, into ~/.local/bin)
   rslsync_config.rs generates rslsync.conf (loopback, random credentials,
                    EULA acceptance, no api_key)
   settings.rs      app-side settings
   commands.rs      Tauri command layer invoked from the frontend
   autostart.rs     XDG autostart entry
 scripts/           setup-dev-ubuntu.sh / install-rslsync.sh / verify-api.sh
+                   / gen-update-manifest.py (updater latest.json)
 .github/workflows  CI (fmt, clippy, test, frontend build) and the release
-                   pipeline (tag v* → deb/rpm/AppImage, x64 + arm64)
+                   pipeline (tag v* → deb/rpm/AppImage, x64 + arm64, signed
+                   updater artifacts + latest.json)
 ```
+
+## In-app updates
+
+`tauri-plugin-updater` checks
+`releases/latest/download/latest.json` on GitHub Releases. The release
+workflow signs AppImage artifacts with `TAURI_SIGNING_PRIVATE_KEY`
+(repo secret) and assembles `latest.json` with
+`scripts/gen-update-manifest.py`. The public key lives in
+`plugins.updater.pubkey` in `src-tauri/tauri.conf.json` — **rotate it
+together with the signing key**.
 
 ## Notes
 
