@@ -109,6 +109,35 @@ export function renderOverview(root: HTMLElement) {
     wrap.append(banner);
   }
 
+  if (d && d.phase === "running" && state.license && !state.license.allowed_to_sync) {
+    const banner = el("div", "banner warn");
+    banner.append(
+      el(
+        "div",
+        "banner-text",
+        "rslsync 3.x requires activation before folders can sync. " +
+          "Start the free trial here, or sign in via the official web UI at " +
+          `http://127.0.0.1:${state.settings?.webui_port ?? 38889}/gui/.`,
+      ),
+    );
+    if (state.license.can_use_trial) {
+      const b = el("button", "btn primary", "Start Free Trial");
+      b.onclick = async () => {
+        b.disabled = true;
+        try {
+          await api.startTrial();
+          toast("Trial started");
+        } catch (e) {
+          toast(String(e), "err");
+        } finally {
+          b.disabled = false;
+        }
+      };
+      banner.append(b);
+    }
+    wrap.append(banner);
+  }
+
   const row = el("div", "stat-row");
   row.append(
     speedCard("Down", state.status?.speed_down ?? 0, "down"),

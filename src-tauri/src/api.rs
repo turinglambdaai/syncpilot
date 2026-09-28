@@ -1,46 +1,33 @@
-//! Async client for the local Resilio Sync (rslsync) Web UI v2 API.
+//! Client for the rslsync Web UI "action" API (`/gui/?token=…&action=…`).
 //!
-//! Endpoint paths below are aligned with the route table extracted from the
-//! rslsync 3.1.2 binary (`grep -aoE '/api/v2/...' rslsync`) and are being
-//! cross-checked against a live daemon by `scripts/verify-api.sh`. Marked
-//! `[UNVERIFIED]` where the HTTP method or body shape is still a best guess.
+//! Verified against rslsync 3.1.2 on Linux — full transcript in
+//! `docs/api-verified.md`. The headline facts that shape this module:
 //!
-//! All endpoint paths live in this module on purpose: rslsync has field drift
-//! between builds, so responses are parsed leniently — anything absent or of
-//! an unexpected shape degrades to `None`/defaults instead of an error. If a
-//! future rslsync release renames an endpoint, this is the one file to fix.
+//! - The Web UI is HTTP-basic-auth (`WWW-Authenticate: Basic realm="Resilio
+//!   Sync"`); every request must carry the credentials.
+//! - Each action request needs a CSRF token from `POST /gui/token.html`. The
+//!   token sits in an HTML div and the official Web UI extracts it with
+//!   `>([^<]+)<` — we do the same.
+//! - A request with a stale/missing token returns HTTP 400 with the body
+//!   `invalid request`; the client refreshes the token and retries once.
+//! - Success responses are `{"status":200,"value":…}` — except a few actions
+//!   (`getsyncfolders`, `adddir`) that reply with a bare object.
+//! - Business errors are HTTP 500 + `{"error":"…","status":500}`, or a nested
+//!   `{"error":N,"message":"…"}` inside `value`.
+//! - The `/api/v2` REST routes found in the binary exist but only accept
+//!   Resilio-ISSUED api keys (signed, versioned, revocation-checked); a
+//!   locally generated key is rejected. The conf must not set one.
+//! - rslsync 3.x gates folder operations on license/identity
+//!   (`getlicenseinfo.allowed_to_sync`); folder adds are no-ops until the
+//!   daemon is activated, so the client surfaces license state to the UI.
 
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const EP_TOKEN: &str = "/api/v2/token";
-const EP_CLIENT: &str = "/api/v2/client";
-const EP_CLIENT_SETTINGS: &str = "/api/v2/client/settings";
-const EP_SHUTDOWN: &str = "/api/v2/client/shutdown";
-const EP_FOLDERS: &str = "/api/v2/folders";
-const EP_SECRET: &str = "/api/v2/secret";
-const EP_USERS: &str = "/api/v2/users";
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum AuthMode {
-    /// POST /token form-encoded `user`/`password`.
-    FormUserPass,
-    /// POST /token JSON `{"username", "password"}`.
-    JsonUsername,
-    /// POST /token JSON `{"user", "password"}`.
-    JsonUser,
-    /// GET /token with HTTP basic auth.
-    Basic,
-}
-
-const AUTH_CANDIDATES: [AuthMode; 4] = [
-    AuthMode::FormUserPass,
-    AuthMode::JsonUsername,
-    AuthMode::JsonUser,
-    AuthMode::Basic,
-];
+const EP_TOKEN: &str = "/gui/token.html";
+const EP_ACTION: &str = "/gui/";
 
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(default)]
@@ -87,12 +74,23 @@ pub struct KnownPeer {
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(default)]
 pub struct RuntimeStatus {
-    /// Bytes per second.
+    /// Bytes per second (last chart sample; 0 when the daemon reports none).
     pub speed_up: f64,
     pub speed_down: f64,
     pub paused: bool,
     pub uptime: Option<u64>,
     pub version: Option<String>,
+}
+
+/// rslsync 3.x activation state from `getlicenseinfo`. Folder operations are
+/// no-ops until `allowed_to_sync` is true (activate via account sign-in or
+/// the free trial).
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(default)]
+pub struct LicenseState {
+    pub allowed_to_sync: bool,
+    pub valid: Option<bool>,
+    pub can_use_trial: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -106,16 +104,20 @@ pub struct GeneratedSecrets {
 #[derive(Clone)]
 pub struct ResilioClient {
     base: Arc<String>,
-    api_key: Arc<String>,
     login: Arc<String>,
     password: Arc<String>,
     http: reqwest::Client,
-    /// The auth candidate that worked, so later calls skip probing.
-    auth_mode: Arc<std::sync::Mutex<Option<AuthMode>>>,
+    /// CSRF token from token.html, reused until the daemon rejects it.
+    token: Arc<std::sync::Mutex<Option<String>>>,
+    /// `action=version` result, fetched once per client lifetime.
+    version: Arc<std::sync::Mutex<Option<String>>>,
 }
 
 impl ResilioClient {
-    pub fn new(port: u16, api_key: &str, login: &str, password: &str) -> Self {
+    /// `api_key` is accepted for call-site compatibility but intentionally
+    /// unused: rslsync 3.x rejects locally generated keys (it expects
+    /// Resilio-issued signed keys), so the conf ships without one.
+    pub fn new(port: u16, _api_key: &str, login: &str, password: &str) -> Self {
         let http = reqwest::Client::builder()
             .cookie_store(true)
             .timeout(Duration::from_secs(8))
@@ -123,104 +125,11 @@ impl ResilioClient {
             .expect("reqwest client builds");
         Self {
             base: Arc::new(format!("http://127.0.0.1:{port}")),
-            api_key: Arc::new(api_key.to_string()),
             login: Arc::new(login.to_string()),
             password: Arc::new(password.to_string()),
             http,
-            auth_mode: Arc::new(std::sync::Mutex::new(None)),
-        }
-    }
-
-    fn auth_headers(&self) -> reqwest::header::HeaderMap {
-        let mut h = reqwest::header::HeaderMap::new();
-        if !self.api_key.is_empty() {
-            if let Ok(v) = reqwest::header::HeaderValue::from_str(&self.api_key) {
-                h.insert("X-API-Key", v);
-            }
-        }
-        h
-    }
-
-    /// Authenticate so the session cookie lands in the cookie jar. Tries the
-    /// known candidates once, then remembers the winner. The X-API-Key header
-    /// stays attached to every request regardless.
-    pub async fn login(&self) -> Result<(), String> {
-        // Copy first: the temporary guard must not live across the await.
-        let known = *self.auth_mode.lock().unwrap();
-        if let Some(mode) = known {
-            return self.login_with(mode).await;
-        }
-        let mut last = "no auth candidate succeeded".to_string();
-        for mode in AUTH_CANDIDATES {
-            match self.login_with(mode).await {
-                Ok(()) => {
-                    *self.auth_mode.lock().unwrap() = Some(mode);
-                    return Ok(());
-                }
-                Err(e) => last = e,
-            }
-        }
-        Err(last)
-    }
-
-    async fn login_with(&self, mode: AuthMode) -> Result<(), String> {
-        let url = format!("{}{EP_TOKEN}", self.base);
-        let send = match mode {
-            AuthMode::FormUserPass => {
-                self.http
-                    .post(&url)
-                    .headers(self.auth_headers())
-                    .form(&[
-                        ("user", self.login.as_str()),
-                        ("password", self.password.as_str()),
-                    ])
-                    .send()
-                    .await
-            }
-            AuthMode::JsonUsername => {
-                self.http
-                    .post(&url)
-                    .headers(self.auth_headers())
-                    .json(&json!({
-                        "username": *self.login,
-                        "password": *self.password
-                    }))
-                    .send()
-                    .await
-            }
-            AuthMode::JsonUser => {
-                self.http
-                    .post(&url)
-                    .headers(self.auth_headers())
-                    .json(&json!({"user": *self.login, "password": *self.password}))
-                    .send()
-                    .await
-            }
-            AuthMode::Basic => {
-                return match self
-                    .http
-                    .get(&url)
-                    .headers(self.auth_headers())
-                    .basic_auth(self.login.as_str(), Some(self.password.as_str()))
-                    .send()
-                    .await
-                {
-                    Ok(r) if r.status().is_success() => Ok(()),
-                    Ok(r) => Err(format!(
-                        "token auth (basic) rejected with HTTP {}",
-                        r.status()
-                    )),
-                    Err(e) => Err(format!("token request failed: {e}")),
-                };
-            }
-        };
-        match send {
-            Ok(r) if r.status().is_success() => Ok(()),
-            Ok(r) => Err(format!(
-                "token auth ({mode:?}) rejected with HTTP {}",
-                r.status()
-            )),
-            Err(e) => Err(format!("token request failed: {e}")),
+            token: Arc::new(std::sync::Mutex::new(None)),
+            version: Arc::new(std::sync::Mutex::new(None)),
         }
     }
 
@@ -229,66 +138,152 @@ impl ResilioClient {
     pub async fn ping(&self) -> bool {
         matches!(
             self.http
-                .get(format!("{}{EP_CLIENT}", self.base))
-                .headers(self.auth_headers())
+                .get(format!("{}{EP_ACTION}", self.base))
+                .basic_auth(self.login.as_str(), Some(self.password.as_str()))
                 .send()
                 .await,
-            Ok(r) if r.status().is_success() || r.status().as_u16() == 401
+            Ok(r) if r.status().as_u16() == 200 || r.status().as_u16() == 401
         )
     }
 
-    async fn json_req(
-        &self,
-        method: reqwest::Method,
-        path: &str,
-        body: Value,
-    ) -> Result<Value, String> {
-        let url = format!("{}{path}", self.base);
-        for relogin in [false, true] {
-            if relogin {
-                self.login().await?;
+    /// POST /gui/token.html and pull the CSRF token out of the HTML wrapper
+    /// (`<div id='token' …>TOKEN</div>`).
+    async fn fetch_token(&self) -> Result<String, String> {
+        let resp = self
+            .http
+            .post(format!("{}{EP_TOKEN}", self.base))
+            .basic_auth(self.login.as_str(), Some(self.password.as_str()))
+            .query(&[("t", millis_now().to_string())])
+            .send()
+            .await
+            .map_err(|e| format!("token request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| format!("token body read failed: {e}"))?;
+        if status.as_u16() == 401 {
+            return Err("basic auth rejected (check webui credentials)".into());
+        }
+        if !status.is_success() {
+            return Err(format!("token request -> HTTP {status}"));
+        }
+        extract_token(&text)
+            .ok_or_else(|| format!("token response has no token payload: {text:.100}"))
+    }
+
+    async fn token_or_refresh(&self, force: bool) -> Result<String, String> {
+        if !force {
+            if let Some(t) = self.token.lock().unwrap().clone() {
+                return Ok(t);
+            }
+        }
+        let t = self.fetch_token().await?;
+        *self.token.lock().unwrap() = Some(t.clone());
+        Ok(t)
+    }
+
+    fn invalidate_token(&self) {
+        *self.token.lock().unwrap() = None;
+    }
+
+    /// Run one action and return its `value` payload (or the bare object for
+    /// actions that reply without a `value` wrapper). Retries once with a
+    /// fresh token when the daemon reports the current one invalid.
+    async fn action(&self, action: &str, params: &[(&str, &str)]) -> Result<Value, String> {
+        for retry in [false, true] {
+            let token = self.token_or_refresh(retry).await?;
+            let url = format!("{}{EP_ACTION}", self.base);
+            let mut query: Vec<(&str, String)> = vec![
+                ("token", token),
+                ("action", action.to_string()),
+                ("t", millis_now().to_string()),
+            ];
+            for (k, v) in params {
+                query.push((k, (*v).to_string()));
             }
             let resp = self
                 .http
-                .request(method.clone(), &url)
-                .headers(self.auth_headers())
-                .json(&body)
+                .get(&url)
+                .basic_auth(self.login.as_str(), Some(self.password.as_str()))
+                .query(&query)
                 .send()
                 .await
-                .map_err(|e| format!("{method} {path} failed: {e}"))?;
-            if resp.status().as_u16() == 401 && !relogin {
-                continue;
-            }
-            let status = resp.status();
+                .map_err(|e| format!("action {action} failed: {e}"))?;
+            let status = resp.status().as_u16();
             let text = resp
                 .text()
                 .await
-                .map_err(|e| format!("{method} {path} body read failed: {e}"))?;
-            if !status.is_success() {
-                return Err(format!("{method} {path} -> HTTP {status}: {text}"));
+                .map_err(|e| format!("action {action} body read failed: {e}"))?;
+            if status == 400 && text.contains("invalid request") {
+                self.invalidate_token();
+                continue;
             }
-            return Ok(serde_json::from_str(&text).unwrap_or(Value::Null));
+            if status == 401 {
+                return Err("basic auth rejected (check webui credentials)".into());
+            }
+            if !(200..300).contains(&status) {
+                // rslsync reports business errors as HTTP 500 + JSON envelope.
+                if let Ok(v) = serde_json::from_str::<Value>(&text) {
+                    if let Some(msg) = error_message(&v) {
+                        return Err(format!("{action}: {msg}"));
+                    }
+                }
+                return Err(format!("{action} -> HTTP {status}: {text:.200}"));
+            }
+            let v: Value = serde_json::from_str(&text)
+                .map_err(|e| format!("action {action} non-JSON response: {e}"))?;
+            if let Some(msg) = error_message(&v) {
+                return Err(format!("{action}: {msg}"));
+            }
+            return Ok(v.get("value").cloned().unwrap_or(v));
         }
-        Err(format!("{method} {path} still unauthorized after login"))
+        Err(format!("{action}: daemon keeps rejecting the CSRF token"))
     }
 
-    async fn get_json(&self, path: &str) -> Result<Value, String> {
-        self.json_req(reqwest::Method::GET, path, Value::Null).await
-    }
-
-    /// Client-level status: transfer speeds and global pause state.
-    /// Field names not yet confirmed on a live daemon (candidates kept).
+    /// Client-level status: live transfer rates come from the speed charts
+    /// (DOWNSPEED=1, UPSPEED=2 — mapping extracted from the official Web UI);
+    /// `paused` has no action-API equivalent on 3.x and is always false.
     pub async fn status(&self) -> Result<RuntimeStatus, String> {
-        let v = self.get_json(EP_CLIENT).await?;
-        Ok(parse_status(&v))
+        let version = {
+            let cached = self.version.lock().unwrap().clone();
+            match cached {
+                Some(v) => Some(v),
+                None => match self.action("version", &[]).await {
+                    Ok(v) => {
+                        let s = v.as_str().unwrap_or_default().to_string();
+                        *self.version.lock().unwrap() = Some(s.clone());
+                        Some(s)
+                    }
+                    Err(_) => None,
+                },
+            }
+        };
+        Ok(RuntimeStatus {
+            speed_down: self
+                .action("getchartdata", &[("type", "1"), ("from", "0"), ("to", "0")])
+                .await
+                .map(|v| chart_last_sample(&v))
+                .unwrap_or(0.0),
+            speed_up: self
+                .action("getchartdata", &[("type", "2"), ("from", "0"), ("to", "0")])
+                .await
+                .map(|v| chart_last_sample(&v))
+                .unwrap_or(0.0),
+            paused: false,
+            uptime: None,
+            version,
+        })
     }
 
     pub async fn folders(&self) -> Result<Vec<Folder>, String> {
-        self.get_json(EP_FOLDERS).await.map(|v| parse_folders(&v))
+        self.action("getsyncfolders", &[("discovery", "1")])
+            .await
+            .map(|v| parse_folders(&v))
     }
 
-    /// Folder list with peers attached: 3.x may expose peers only as a
-    /// sub-resource (`/folders/{fid}/peers`), so fetch them when missing.
+    /// Folder list with peers attached: the folder payload may not embed
+    /// peers, so fetch them per folder when missing.
     pub async fn folders_detailed(&self) -> Result<Vec<Folder>, String> {
         let mut folders = self.folders().await?;
         if folders.len() <= 20 {
@@ -302,109 +297,150 @@ impl ResilioClient {
     }
 
     pub async fn folder_peers(&self, fid: &str) -> Result<Vec<Peer>, String> {
-        let v = self.get_json(&format!("{EP_FOLDERS}/{fid}/peers")).await?;
-        Ok(parse_folder_peers(&v))
+        self.action("knownhosts", &[("id", fid)])
+            .await
+            .map(|v| parse_folder_peers(&v))
     }
 
-    /// Devices known to this client (may map to the 3.x `/users` resource).
+    /// Peer transfer stats across all folders (`getpeersstat`).
     pub async fn known_peers(&self) -> Result<Vec<KnownPeer>, String> {
-        let v = self.get_json(EP_USERS).await?;
-        Ok(parse_known_peers(&v))
+        self.action("getpeersstat", &[])
+            .await
+            .map(|v| parse_known_peers(&v))
     }
 
-    /// Generate a fresh share key set. The binary confirms a `/secret`
-    /// resource; the `rosecret` field name is present in its strings.
+    /// Activation state (rslsync 3.x gates all folder operations on it).
+    pub async fn license_info(&self) -> Result<LicenseState, String> {
+        let v = self.action("getlicenseinfo", &[]).await?;
+        Ok(LicenseState {
+            allowed_to_sync: bool_field(&v, &["allowed_to_sync"]).unwrap_or(false),
+            valid: bool_field(&v, &["valid"]),
+            can_use_trial: bool_field(&v, &["can_use_trial"]),
+        })
+    }
+
+    /// Start the free trial period (one of the two 3.x activation paths).
+    pub async fn start_trial(&self) -> Result<(), String> {
+        self.action("starttrialperiod", &[]).await.map(|_| ())
+    }
+
+    /// Generate a fresh share key set (`action=secret`; verified field names
+    /// `secret` / `readonlysecret`).
     pub async fn generate_secrets(&self) -> Result<GeneratedSecrets, String> {
-        let v = match self.get_json(EP_SECRET).await {
-            Ok(v) => v,
-            Err(_) => {
-                self.json_req(reqwest::Method::POST, EP_SECRET, json!({}))
-                    .await?
-            }
-        };
+        let v = self.action("secret", &[]).await?;
         parse_secrets(&v).ok_or_else(|| "response contains no secret".to_string())
     }
 
-    /// Add a folder by directory (and optional share key). Falls back to the
-    /// 2.x-era `path` field name if `dir` is rejected. `[UNVERIFIED body]`
+    /// Add a folder. With a share key this joins an existing share
+    /// (`addlink`); without one it creates a new synced folder at `dir`
+    /// (`adddir` — the directory must NOT exist yet, rslsync creates it).
+    /// On rslsync 3.x both fail until the daemon is activated; the license
+    /// error is surfaced verbatim.
     pub async fn add_folder(&self, dir: &str, secret: Option<&str>) -> Result<(), String> {
-        let mut body = json!({ "dir": dir });
-        if let Some(s) = secret {
-            if !s.trim().is_empty() {
-                body["secret"] = json!(s.trim());
+        let key = secret.map(str::trim).filter(|s| !s.is_empty());
+        match key {
+            Some(k) => {
+                let v = self.action("addlink", &[("link", k), ("dir", dir)]).await?;
+                // addlink nests its error: {"status":200,"value":{"error":205,...}}
+                if let Some(obj) = v.as_object() {
+                    if let Some(e) = obj.get("error") {
+                        let msg = obj
+                            .get("message")
+                            .and_then(Value::as_str)
+                            .unwrap_or("unknown error");
+                        return Err(format!("addlink: {msg} ({e})"));
+                    }
+                }
+                Ok(())
+            }
+            None => {
+                // Response on success: {"path": "..."} with no value wrapper.
+                let _ = self.action("adddir", &[("dir", dir)]).await?;
+                Ok(())
             }
         }
-        let first_err = match self
-            .json_req(reqwest::Method::POST, EP_FOLDERS, body.clone())
-            .await
-        {
-            Ok(_) => return Ok(()),
-            Err(e) => e,
-        };
-        if let Some(obj) = body.as_object_mut() {
-            obj.remove("dir");
-            obj.insert("path".into(), json!(dir));
-        }
-        match self.json_req(reqwest::Method::POST, EP_FOLDERS, body).await {
-            Ok(_) => Ok(()),
-            Err(_) => Err(first_err),
-        }
     }
 
-    /// [UNVERIFIED] 3.x route table has `/folders/{fid}` — DELETE is the
-    /// natural remove; verify-api.sh confirms.
+    /// Remove a folder by id (files on disk are kept).
     pub async fn remove_folder(&self, id: &str) -> Result<(), String> {
-        self.json_req(
-            reqwest::Method::DELETE,
-            &format!("{EP_FOLDERS}/{id}"),
-            json!({}),
-        )
-        .await
-        .map(|_| ())
-    }
-
-    /// [UNVERIFIED] pause via PATCH `/folders/{fid}` `{"paused": bool}`.
-    pub async fn pause_folder(&self, id: &str, paused: bool) -> Result<(), String> {
-        self.json_req(
-            reqwest::Method::PATCH,
-            &format!("{EP_FOLDERS}/{id}"),
-            json!({ "paused": paused }),
-        )
-        .await
-        .map(|_| ())
-    }
-
-    /// 3.x has no global pause route; pause every folder individually.
-    pub async fn pause_all(&self, paused: bool) -> Result<(), String> {
-        let folders = self.folders().await?;
-        for f in &folders {
-            self.pause_folder(&f.id, paused).await?;
-        }
-        Ok(())
-    }
-
-    /// [UNVERIFIED] POST `/client/shutdown` — route confirmed in binary.
-    pub async fn shutdown(&self) -> Result<(), String> {
-        self.json_req(reqwest::Method::POST, EP_SHUTDOWN, json!({}))
+        self.action("removefolder", &[("folderid", id)])
             .await
             .map(|_| ())
     }
 
-    pub async fn client_settings(&self) -> Result<Value, String> {
-        self.get_json(EP_CLIENT_SETTINGS).await
+    /// rslsync 3.x exposes no folder-pause action (verified against the
+    /// official Web UI route table); the GUI hides the control instead.
+    pub async fn pause_folder(&self, _id: &str, _paused: bool) -> Result<(), String> {
+        Err("pause is not supported by rslsync 3.x".into())
     }
 
-    /// 0 means unlimited, mirroring rslsync semantics.
-    /// [UNVERIFIED] exact `speed_limits` shape — verify-api.sh will tell.
-    pub async fn set_speed_limits(&self, up_kbps: u64, down_kbps: u64) -> Result<(), String> {
-        self.json_req(
-            reqwest::Method::PATCH,
-            EP_CLIENT_SETTINGS,
-            json!({ "speed_limits": { "up": up_kbps, "down": down_kbps } }),
-        )
-        .await
-        .map(|_| ())
+    /// rslsync 3.x exposes no global pause action either.
+    pub async fn pause_all(&self, _paused: bool) -> Result<(), String> {
+        Err("pause is not supported by rslsync 3.x".into())
     }
+
+    pub async fn client_settings(&self) -> Result<Value, String> {
+        self.action("settings", &[]).await
+    }
+
+    /// Global speed limits in KB/s via `setsettings`; -1 means unlimited
+    /// (verified: set + read-back round-trips).
+    pub async fn set_speed_limits(&self, up_kbps: i64, down_kbps: i64) -> Result<(), String> {
+        let up = up_kbps.to_string();
+        let down = down_kbps.to_string();
+        self.action("setsettings", &[("ulrate", &up), ("dlrate", &down)])
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn shutdown(&self) -> Result<(), String> {
+        self.action("shutdown", &[]).await.map(|_| ())
+    }
+}
+
+fn millis_now() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
+}
+
+/// The token.html body wraps the token in HTML tags; the official Web UI
+/// matches `>([^<]+)<`. Walk tag pairs from the end: the `</html>` pair
+/// yields an empty payload and is skipped, the innermost pair holds the
+/// token.
+fn extract_token(body: &str) -> Option<String> {
+    body.rmatch_indices('<').find_map(|(end, _)| {
+        let start = body[..end].rfind('>')?;
+        let tok = &body[start + 1..end];
+        (!tok.is_empty()).then(|| tok.to_string())
+    })
+}
+
+/// Top-level envelope error `{"error":"msg","status":500}` or nested
+/// `{"error":205,"message":"SE_SM_NO_IDENTITY"}` inside `value`.
+fn error_message(v: &Value) -> Option<String> {
+    let err = v.get("error")?;
+    match err {
+        Value::String(s) => Some(s.clone()),
+        Value::Number(n) => {
+            let msg = v
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown error");
+            Some(format!("{msg} ({n})"))
+        }
+        _ => None,
+    }
+}
+
+/// Newest-first chart samples; the first one is the latest rate.
+fn chart_last_sample(v: &Value) -> f64 {
+    v.as_array()
+        .and_then(|a| a.first())
+        .and_then(|s| s.get("value"))
+        .and_then(Value::as_f64)
+        .unwrap_or(0.0)
 }
 
 fn num_f64(v: Option<&Value>) -> f64 {
@@ -434,34 +470,12 @@ fn u64_field(v: &Value, keys: &[&str]) -> Option<u64> {
     keys.iter().find_map(|k| v.get(*k).and_then(Value::as_u64))
 }
 
-/// First key present as a JSON number wins.
-fn num_field_multi(v: &Value, keys: &[&str]) -> f64 {
-    for k in keys {
-        if let Some(x) = v.get(*k) {
-            if matches!(x, Value::Number(_)) {
-                return num_f64(Some(x));
-            }
-        }
-    }
-    0.0
-}
-
-pub fn parse_status(v: &Value) -> RuntimeStatus {
-    RuntimeStatus {
-        speed_up: num_field_multi(v, &["speed_up", "up", "upload_speed"]),
-        speed_down: num_field_multi(v, &["speed_down", "down", "download_speed"]),
-        paused: bool_field(v, &["paused", "ispaused"]).unwrap_or(false),
-        uptime: u64_field(v, &["uptime"]),
-        version: str_field(v, &["version", "clientversion"]),
-    }
-}
-
 pub fn parse_folders(v: &Value) -> Vec<Folder> {
-    // Both top-level {"folders":[...]} and wrapped {"data":{"folders":[...]}}
-    // shapes are handled; a bare array also works.
+    // Verified envelope: {"folders":[…],"status":200}; stay lenient about
+    // wrapping for older builds.
     let arr = v
         .get("folders")
-        .or_else(|| v.pointer("/data/folders"))
+        .or_else(|| v.pointer("/value/folders"))
         .and_then(Value::as_array)
         .cloned()
         .or_else(|| v.as_array().cloned())
@@ -474,12 +488,12 @@ pub fn parse_folders(v: &Value) -> Vec<Folder> {
                 .map(|ps| ps.iter().map(parse_peer).collect())
                 .unwrap_or_default();
             let folder = Folder {
-                id: str_field(f, &["id"]).unwrap_or_default(),
-                secret: str_field(f, &["secret"]).unwrap_or_default(),
+                id: str_field(f, &["id", "folderid", "secret"]).unwrap_or_default(),
+                secret: str_field(f, &["secret", "key"]).unwrap_or_default(),
                 path: str_field(f, &["path", "dir"]).unwrap_or_default(),
                 ispaused: bool_field(f, &["ispaused", "paused"]).unwrap_or(false),
                 size: num_field(f, &["size"]),
-                date_added: u64_field(f, &["date_added"]),
+                date_added: u64_field(f, &["date_added", "dateadded"]),
                 synclevel: f.get("synclevel").and_then(Value::as_u64).map(|x| x as u8),
                 peers,
             };
@@ -497,40 +511,39 @@ pub fn parse_folder_peers(v: &Value) -> Vec<Peer> {
         .as_array()
         .cloned()
         .or_else(|| v.get("peers").and_then(Value::as_array).cloned())
-        .or_else(|| v.pointer("/data/peers").and_then(Value::as_array).cloned())
+        .or_else(|| v.pointer("/value/peers").and_then(Value::as_array).cloned())
+        .or_else(|| v.pointer("/value").and_then(Value::as_array).cloned())
         .unwrap_or_default();
     arr.iter().map(parse_peer).collect()
 }
 
 fn parse_peer(p: &Value) -> Peer {
     Peer {
-        id: str_field(p, &["id"]).unwrap_or_default(),
-        name: str_field(p, &["name"]).unwrap_or_default(),
-        status: str_field(p, &["status"]),
-        connection: str_field(p, &["connection"]),
-        syncstate: str_field(p, &["syncstate"]),
+        id: str_field(p, &["id", "peerid", "deviceid"]).unwrap_or_default(),
+        name: str_field(p, &["name", "peername", "displayname"]).unwrap_or_default(),
+        status: str_field(p, &["status", "state"]),
+        connection: str_field(p, &["connection", "conntype", "linktype"]),
+        syncstate: str_field(p, &["syncstate", "sync_state"]),
         isreadable: bool_field(p, &["isreadable"]),
         iswritable: bool_field(p, &["iswritable"]),
-        percent_downloaded: num_field(p, &["percent_downloaded"]),
-        download: num_field(p, &["download"]),
-        upload: num_field(p, &["upload"]),
+        percent_downloaded: num_field(p, &["percent_downloaded", "percentpermpleted", "progress"]),
+        download: num_field(p, &["download", "recv_speed", "downspeed"]),
+        upload: num_field(p, &["upload", "send_speed", "upspeed"]),
     }
 }
 
 pub fn parse_known_peers(v: &Value) -> Vec<KnownPeer> {
     let arr = v
-        .get("peers")
-        .or_else(|| v.get("users"))
-        .or_else(|| v.pointer("/data/peers"))
-        .or_else(|| v.pointer("/data/users"))
-        .and_then(Value::as_array)
+        .as_array()
         .cloned()
-        .or_else(|| v.as_array().cloned())
+        .or_else(|| v.get("peers").and_then(Value::as_array).cloned())
+        .or_else(|| v.pointer("/value/peers").and_then(Value::as_array).cloned())
+        .or_else(|| v.pointer("/value").and_then(Value::as_array).cloned())
         .unwrap_or_default();
     arr.iter()
         .map(|p| KnownPeer {
-            id: str_field(p, &["id"]).unwrap_or_default(),
-            name: str_field(p, &["name"]).unwrap_or_default(),
+            id: str_field(p, &["id", "peerid", "deviceid"]).unwrap_or_default(),
+            name: str_field(p, &["name", "peername", "displayname"]).unwrap_or_default(),
             clientversion: str_field(p, &["clientversion", "version"]),
             os: str_field(p, &["os", "platform"]),
         })
@@ -541,7 +554,7 @@ pub fn parse_secrets(v: &Value) -> Option<GeneratedSecrets> {
     let secret = str_field(v, &["secret"])?;
     Some(GeneratedSecrets {
         secret,
-        read_only: str_field(v, &["rosecret", "read_only", "ro_secret"]),
+        read_only: str_field(v, &["readonlysecret", "rosecret", "read_only"]),
         encryption: str_field(v, &["encsecret", "encryption", "enc_secret"]),
     })
 }
@@ -552,6 +565,41 @@ mod tests {
     use serde_json::json;
     use std::io::{Read, Write};
     use std::net::TcpListener;
+
+    #[test]
+    fn extracts_token_from_html_wrapper() {
+        let body = "<html><div id='token' style='display:none;'>7QAlANw_Q9z6FT_AzWZNKya-vQU2mUiFcXMfSqA-Q2-bwOZW4cR2r05IumoAAAAA</div></html>";
+        assert_eq!(
+            extract_token(body).as_deref(),
+            Some("7QAlANw_Q9z6FT_AzWZNKya-vQU2mUiFcXMfSqA-Q2-bwOZW4cR2r05IumoAAAAA")
+        );
+        // No tag pairs → no token payload.
+        assert_eq!(extract_token("invalid request"), None);
+        assert_eq!(extract_token(""), None);
+    }
+
+    #[test]
+    fn error_envelopes_are_recognized() {
+        let top = json!({"error": "can't find folder by folderid", "status": 500});
+        assert_eq!(
+            error_message(&top).as_deref(),
+            Some("can't find folder by folderid")
+        );
+        let nested = json!({"error": 205, "message": "SE_SM_NO_IDENTITY"});
+        assert_eq!(
+            error_message(&nested).as_deref(),
+            Some("SE_SM_NO_IDENTITY (205)")
+        );
+        assert_eq!(error_message(&json!({"status": 200})), None);
+    }
+
+    #[test]
+    fn chart_sample_takes_newest() {
+        let v = json!([{"time": 1790592995u64, "value": 42}, {"time": 1790592992u64, "value": 7}]);
+        assert_eq!(chart_last_sample(&v), 42.0);
+        assert_eq!(chart_last_sample(&json!([])), 0.0);
+        assert_eq!(chart_last_sample(&json!({"nope": 1})), 0.0);
+    }
 
     #[test]
     fn parses_folders_top_level_wrapped_and_bare_array() {
@@ -570,8 +618,8 @@ mod tests {
             }]
         });
         for v in [
-            json!({ "folders": [folder] }),
-            json!({ "data": { "folders": [folder] } }),
+            json!({ "folders": [folder], "status": 200 }),
+            json!({ "value": { "folders": [folder] } }),
             json!([folder]),
         ] {
             let folders = parse_folders(&v);
@@ -598,56 +646,59 @@ mod tests {
     }
 
     #[test]
-    fn parses_status_first_number_key_wins() {
-        let v = json!({ "speed_up": 1024, "speed_down": 2048.5, "paused": false, "uptime": 99, "version": "3.1.2" });
-        let s = parse_status(&v);
-        assert_eq!(s.speed_up, 1024.0);
-        assert_eq!(s.speed_down, 2048.5);
-        assert_eq!(s.version.as_deref(), Some("3.1.2"));
-        // alternate field names
-        let v2 = json!({ "up": 5, "down": 6 });
-        let s2 = parse_status(&v2);
-        assert_eq!(s2.speed_up, 5.0);
-        assert_eq!(s2.speed_down, 6.0);
-        let s3 = parse_status(&json!({}));
-        assert_eq!(s3.speed_up, 0.0);
-        assert!(!s3.paused);
-    }
-
-    #[test]
     fn parses_folder_peers_shapes() {
         let peer = json!({ "id": "p1", "name": "n1", "syncstate": "synced" });
         for v in [
             json!([peer]),
             json!({ "peers": [peer] }),
-            json!({ "data": { "peers": [peer] } }),
+            json!({ "value": [peer] }),
         ] {
             assert_eq!(parse_folder_peers(&v).len(), 1);
         }
     }
 
     #[test]
-    fn parses_known_peers_users_key() {
-        let a = json!({ "users": [{ "id": "x", "name": "n1" }] });
+    fn parses_known_peers_shapes() {
+        let a = json!({ "value": [{ "id": "x", "name": "n1" }] });
         assert_eq!(parse_known_peers(&a).len(), 1);
-        let b = json!({ "peers": [{ "id": "x", "name": "n1" }] });
+        let b = json!([{ "id": "x", "name": "n1" }]);
         assert_eq!(parse_known_peers(&b).len(), 1);
     }
 
     #[test]
-    fn parses_secrets_variants() {
-        let v = json!({ "secret": "RWKEY", "rosecret": "ROKEY" });
+    fn parses_secrets_with_verified_field_names() {
+        let v = json!({
+            "canencrypt": false,
+            "readonlysecret": "BFCXA3QKAPF3HPIOJRATWR7JM4GIQIIVS",
+            "secret": "ATKB2I6C4GK62XJSZ3QBZ33BWQKFHLIVV",
+            "secrettype": 1
+        });
         let s = parse_secrets(&v).unwrap();
-        assert_eq!(s.secret, "RWKEY");
-        assert_eq!(s.read_only.as_deref(), Some("ROKEY"));
+        assert_eq!(s.secret, "ATKB2I6C4GK62XJSZ3QBZ33BWQKFHLIVV");
+        assert_eq!(
+            s.read_only.as_deref(),
+            Some("BFCXA3QKAPF3HPIOJRATWR7JM4GIQIIVS")
+        );
         assert!(parse_secrets(&json!({ "nope": 1 })).is_none());
+    }
+
+    #[test]
+    fn license_state_defaults_to_locked() {
+        let v = json!({"allowed_to_sync": false, "can_use_trial": true, "valid": false});
+        let st = LicenseState {
+            allowed_to_sync: bool_field(&v, &["allowed_to_sync"]).unwrap_or(false),
+            valid: bool_field(&v, &["valid"]),
+            can_use_trial: bool_field(&v, &["can_use_trial"]),
+        };
+        assert!(!st.allowed_to_sync);
+        assert!(st.can_use_trial.unwrap());
     }
 
     // ---- end-to-end against a tiny loopback HTTP mock ----
 
-    /// Minimal loopback HTTP mock standing in for rslsync. Responds per path
-    /// regardless of method; `Connection: close` so each request is one
-    /// connection.
+    /// Minimal loopback HTTP mock standing in for rslsync's Web UI server.
+    /// Serves token.html and the /gui/?token=…&action=… surface with the
+    /// verified envelope semantics (400 `invalid request` on a bad token).
     fn spawn_mock(routes: Vec<(&'static str, u16, String)>) -> u16 {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
@@ -660,22 +711,50 @@ mod tests {
                 let mut buf = [0u8; 16384];
                 let n = stream.read(&mut buf).unwrap_or(0);
                 let req = String::from_utf8_lossy(&buf[..n]);
-                let route = req
-                    .lines()
-                    .next()
-                    .unwrap_or("")
-                    .split(' ')
-                    .nth(1)
-                    .unwrap_or("")
-                    .split('?')
-                    .next()
-                    .unwrap_or("")
-                    .to_string();
-                let (code, body) = routes
-                    .iter()
-                    .find(|(p, _, _)| *p == route)
-                    .map(|(_, c, b)| (*c, b.clone()))
-                    .unwrap_or((404, "{\"error\":\"not found\"}".to_string()));
+                let (method, target) = {
+                    let mut it = req.lines().next().unwrap_or("").split(' ');
+                    (it.next().unwrap_or(""), it.next().unwrap_or(""))
+                };
+                let path = target.split('?').next().unwrap_or("");
+                let query = target.split_once('?').map(|(_, q)| q).unwrap_or("");
+                let mut params: Vec<(String, String)> = Vec::new();
+                for kv in query.split('&').filter(|s| !s.is_empty()) {
+                    let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
+                    params.push((k.to_string(), v.to_string()));
+                }
+                let get = |name: &str| {
+                    params
+                        .iter()
+                        .find(|(k, _)| k == name)
+                        .map(|(_, v)| v.clone())
+                };
+                let (code, body) = if path == EP_TOKEN && method == "POST" {
+                    (
+                        200,
+                        "<html><div id='token' style='display:none;'>TOK123</div></html>"
+                            .to_string(),
+                    )
+                } else if path == EP_ACTION {
+                    match (get("token").as_deref(), get("action")) {
+                        (Some("TOK123"), _) => {
+                            let action = get("action").unwrap_or_default();
+                            routes
+                                .iter()
+                                .find(|(a, _, _)| *a == action)
+                                .map(|(_, c, b)| (*c, b.clone()))
+                                .unwrap_or((
+                                    404,
+                                    "{\"error\":\"unknown action\",\"status\":404}".into(),
+                                ))
+                        }
+                        // Bare GET /gui/ is the Web UI page itself: the
+                        // daemon answers 200 with valid basic auth.
+                        (None, None) => (200, "{}".into()),
+                        _ => (400, "invalid request".into()),
+                    }
+                } else {
+                    (404, "not found".into())
+                };
                 let resp = format!(
                     "HTTP/1.1 {code} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
                     body.len()
@@ -687,44 +766,67 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn end_to_end_token_status_folders_secret_shutdown() {
+    async fn end_to_end_token_actions_and_error_surface() {
         let port = spawn_mock(vec![
-            ("/api/v2/token", 200, "ok".into()),
             (
-                "/api/v2/client",
+                "version",
                 200,
-                json!({ "speed_up": 10, "speed_down": 20, "paused": false }).to_string(),
+                json!({"status":200,"value":"3.1.2 (1076)"}).to_string(),
             ),
             (
-                "/api/v2/folders",
+                "getchartdata",
                 200,
-                json!({ "folders": [{ "id": "f1", "path": "/tmp/x", "secret": "S1" }] })
+                json!({"status":200,"value":[{"time":5u64,"value":0}]}).to_string(),
+            ),
+            (
+                "getsyncfolders",
+                200,
+                json!({"folders":[{"id":"f1","path":"/tmp/x","secret":"S1"}],"status":200})
                     .to_string(),
             ),
             (
-                "/api/v2/folders/f1/peers",
+                "knownhosts",
                 200,
-                json!([{ "id": "p1", "name": "laptop", "syncstate": "synced" }]).to_string(),
-            ),
-            ("/api/v2/folders/f1", 200, "{}".into()),
-            (
-                "/api/v2/secret",
-                200,
-                json!({ "secret": "RW", "rosecret": "RO" }).to_string(),
+                json!({"status":200,"value":[{"id":"p1","name":"laptop"}]}).to_string(),
             ),
             (
-                "/api/v2/client/settings",
+                "getpeersstat",
                 200,
-                json!({ "speed_limits": { "up": 100, "down": 200 } }).to_string(),
+                json!({"status":200,"value":[]}).to_string(),
             ),
-            ("/api/v2/client/shutdown", 200, "{}".into()),
+            (
+                "getlicenseinfo",
+                200,
+                json!({"status":200,"value":{"allowed_to_sync":false,"can_use_trial":true}})
+                    .to_string(),
+            ),
+            (
+                "secret",
+                200,
+                json!({"status":200,"value":{"secret":"RW","readonlysecret":"RO"}}).to_string(),
+            ),
+            (
+                "addlink",
+                200,
+                json!({"status":200,"value":{"error":205,"message":"SE_SM_NO_IDENTITY"}})
+                    .to_string(),
+            ),
+            ("adddir", 200, json!({"path":"/tmp/x/"}).to_string()),
+            ("removefolder", 200, json!({"status":200}).to_string()),
+            ("setsettings", 200, json!({"status":200}).to_string()),
+            (
+                "settings",
+                200,
+                json!({"status":200,"value":{"dlrate":-1,"ulrate":2000}}).to_string(),
+            ),
+            ("shutdown", 200, json!({"status":200}).to_string()),
         ]);
-        let c = ResilioClient::new(port, "testkey", "u", "p");
+        let c = ResilioClient::new(port, "unused", "u", "p");
         assert!(c.ping().await, "mock must answer on its port");
-        c.login().await.expect("first auth candidate succeeds");
 
         let st = c.status().await.expect("status");
-        assert_eq!(st.speed_down, 20.0);
+        assert_eq!(st.version.as_deref(), Some("3.1.2 (1076)"));
+        assert_eq!(st.speed_down, 0.0);
 
         let detailed = c.folders_detailed().await.expect("folders");
         assert_eq!(detailed.len(), 1);
@@ -732,14 +834,27 @@ mod tests {
         assert_eq!(detailed[0].peers.len(), 1, "peers sub-resource must merge");
         assert_eq!(detailed[0].peers[0].name, "laptop");
 
+        let lic = c.license_info().await.expect("license");
+        assert!(!lic.allowed_to_sync);
+        assert!(lic.can_use_trial.unwrap());
+
         let sec = c.generate_secrets().await.expect("secrets");
         assert_eq!(sec.secret, "RW");
         assert_eq!(sec.read_only.as_deref(), Some("RO"));
 
-        c.pause_folder("f1", true).await.expect("pause");
-        c.remove_folder("f1").await.expect("remove");
+        // addlink surfaces the nested 3.x license/identity error verbatim.
+        let err = c.add_folder("/tmp/x", Some("RWKEY")).await.unwrap_err();
+        assert!(err.contains("SE_SM_NO_IDENTITY"), "got: {err}");
 
-        c.set_speed_limits(100, 200).await.expect("limits");
+        c.add_folder("/tmp/x", None).await.expect("adddir");
+        c.remove_folder("f1").await.expect("remove");
+        c.set_speed_limits(-1, 2000).await.expect("limits");
+        let settings = c.client_settings().await.expect("settings read");
+        assert_eq!(settings["ulrate"], 2000);
+        assert_eq!(settings["dlrate"], -1);
+
+        // Business errors (HTTP 500 + envelope) become Err with the message.
+        assert!(c.pause_folder("f1", true).await.is_err());
 
         c.shutdown().await.expect("shutdown");
     }

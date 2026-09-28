@@ -81,3 +81,9 @@ export interface GeneratedSecrets {
   read_only?: string | null;
   encryption?: string | null;
 }
+
+export interface LicenseState {
+  /** rslsync 3.x gates folder operations on this. */
+  allowed_to_sync: boolean;
+  can_use_trial?: boolean | null;
+}

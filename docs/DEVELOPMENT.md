@@ -35,15 +35,19 @@ bash scripts/verify-api.sh
 ```
 
 This starts a throwaway rslsync daemon (isolated storage, random
-credentials, loopback port 48889) and probes every endpoint the Rust client
-uses — auth candidates, folder CRUD, per-folder peers, settings, shutdown —
-dumping the full HTTP responses into a `verify-report.txt`.
+credentials, loopback port 48889) and probes the Web UI action API —
+token handshake, info/settings, speed charts, license state, folder
+lifecycle, settings round-trip, shutdown — dumping full responses into a
+`verify-report.txt`.
 
-The rslsync **3.x** API differs substantially from the 2.x-era endpoints
-found in older documentation, and a few method/body shapes in
-`src-tauri/src/api.rs` are still marked `[UNVERIFIED]`. If the report shows
-a mismatch (empty folder lists, auth rejections), attach the report to a
-GitHub issue — the client is fixed from facts, not guesses.
+The Rust client speaks the same **action API** the official Web UI uses
+(`POST /gui/token.html` + `GET /gui/?token=…&action=…` with basic auth),
+verified live against rslsync 3.1.2. See [docs/api-verified.md](api-verified.md)
+for the protocol facts, including two conf requirements (mandatory
+`agree_to_EULA`, no local `api_key`) and the 3.x license gate that makes
+folder operations no-ops until the daemon is activated. If the report
+shows a mismatch on your build, attach it to a GitHub issue — the client
+is fixed from facts, not guesses.
 
 ## 3. Run the app
 
@@ -63,10 +67,12 @@ To build installers: `npm run tauri build` (deb / rpm / AppImage).
 src/               frontend (vanilla TS + Vite): sidebar, overview, folder
                    detail, add-folder wizard, settings
 src-tauri/src/     Rust backend:
-  api.rs           rslsync REST client — all endpoint paths and lenient
-                   response parsing live here
+  api.rs           rslsync client for the Web UI action API — CSRF token
+                   handshake, envelope handling and lenient response
+                   parsing all live here (see docs/api-verified.md)
   manager.rs       daemon lifecycle: spawn/adopt/supervise/stop
-  rslsync_config.rs generates rslsync.conf (loopback, random credentials)
+  rslsync_config.rs generates rslsync.conf (loopback, random credentials,
+                   EULA acceptance, no api_key)
   settings.rs      app-side settings
   commands.rs      Tauri command layer invoked from the frontend
   autostart.rs     XDG autostart entry

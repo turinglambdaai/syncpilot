@@ -14,14 +14,18 @@ pub fn storage_dir(app_dir: &Path) -> PathBuf {
 }
 
 pub fn build_json(settings: &AppSettings, storage_path: &Path) -> String {
+    // No `api_key`: rslsync 3.x validates it against Resilio-issued signed
+    // keys and refuses to start on a locally generated one. The action API
+    // authenticates with the Web UI credentials instead.
     let conf = serde_json::json!({
         "device_name": settings.device_name,
         "storage_path": storage_path.to_string_lossy(),
+        // rslsync 3.x refuses to start without explicit EULA acceptance.
+        "agree_to_EULA": "yes",
         "webui": {
             "listen": format!("127.0.0.1:{}", settings.webui_port),
             "login": settings.webui_login,
-            "password": settings.webui_password,
-            "api_key": settings.api_key
+            "password": settings.webui_password
         },
         "shared_folders": []
     });
@@ -53,9 +57,15 @@ mod tests {
         let json = build_json(&s, Path::new("/tmp/storage"));
         let v: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
         assert_eq!(v["webui"]["listen"], format!("127.0.0.1:{}", s.webui_port));
-        assert_eq!(v["webui"]["api_key"], s.api_key.as_str());
+        assert_eq!(
+            v["webui"].get("api_key"),
+            None,
+            "3.x rejects local api keys"
+        );
         assert_eq!(v["device_name"], s.device_name.as_str());
         assert_eq!(v["storage_path"], "/tmp/storage");
+        // Required by rslsync 3.x, otherwise the daemon exits immediately.
+        assert_eq!(v["agree_to_EULA"], "yes");
     }
 
     #[test]

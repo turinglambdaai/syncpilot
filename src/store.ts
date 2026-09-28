@@ -1,4 +1,4 @@
-import type { AppSettings, DaemonStatus, Folder, RuntimeStatus } from "./types";
+import type { AppSettings, DaemonStatus, Folder, LicenseState, RuntimeStatus } from "./types";
 
 export type Route =
   | { name: "overview" }
@@ -11,6 +11,7 @@ export interface AppState {
   folders: Folder[];
   status: RuntimeStatus | null;
   daemon: DaemonStatus | null;
+  license: LicenseState | null;
   history: { up: number; down: number }[];
   settings: AppSettings | null;
   version: string;
@@ -21,6 +22,7 @@ export const state: AppState = {
   folders: [],
   status: null,
   daemon: null,
+  license: null,
   history: [],
   settings: null,
   version: "",

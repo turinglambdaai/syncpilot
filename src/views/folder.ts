@@ -51,9 +51,7 @@ export function renderFolderView(root: HTMLElement, id: string) {
     actionBtn("Open Folder", async () => {
       await api.openPath(f.path);
     }),
-    actionBtn(f.ispaused ? "Resume" : "Pause", async () => {
-      await api.pauseFolder(f.id, !f.ispaused);
-    }),
+    // No pause/resume: rslsync 3.x has no folder-pause action.
     actionBtn("Copy Share Key", async () => {
       const ok = await copyText(f.secret);
       toast(ok ? "Share key copied" : "Copy failed", ok ? "ok" : "err");

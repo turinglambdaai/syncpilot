@@ -4,6 +4,23 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+### Fixed
+
+- Generated `rslsync.conf` now sets `"agree_to_EULA": "yes"` — rslsync 3.x exits immediately without it, so app-spawned daemons never started on 3.1.2
+- The conf no longer writes an `api_key`: rslsync 3.x validates keys against Resilio-issued signed keys and refuses to start on a locally generated one
+
+### Changed
+
+- API client rewritten from the `/api/v2` REST surface (which only accepts Resilio-issued keys) to the Web UI action API the official client uses: `POST /gui/token.html` for a CSRF token + `GET /gui/?token=…&action=…` with HTTP basic auth. Verified live against rslsync 3.1.2; transcript in `docs/api-verified.md`
+- Speed limits use the verified `setsettings&ulrate/dlrate` shape (KB/s, `-1` = unlimited); read-back via `settings`
+- Live transfer rates come from the speed charts (`getchartdata`, DOWNSPEED=1 / UPSPEED=2 per the official Web UI); daemon version is cached from `action=version`
+- Pause/resume controls removed — rslsync 3.x exposes no global or per-folder pause action
+- `scripts/verify-api.sh` rewritten to probe the action API (token, envelope errors, charts, license, folder lifecycle, settings round-trip, shutdown)
+
+### Added
+
+- 3.x licensing gate surfaced to the UI: overview banner with daemon activation state (`getlicenseinfo.allowed_to_sync`) and a one-click free-trial start (`starttrialperiod`)
+
 ## [0.1.0] - 2026-09-28
 
 ### Added

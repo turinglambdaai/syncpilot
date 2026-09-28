@@ -90,7 +90,7 @@ pub async fn generate_secret(app: AppHandle) -> CmdResult<GeneratedSecrets> {
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct SpeedLimits {
-    /// kbit/s; None = unlimited (rslsync 0).
+    /// KB/s; None = unlimited (rslsync reports -1).
     pub up_kbps: Option<u64>,
     pub down_kbps: Option<u64>,
 }
@@ -98,27 +98,25 @@ pub struct SpeedLimits {
 #[tauri::command]
 pub async fn get_speed_limits(app: AppHandle) -> CmdResult<SpeedLimits> {
     let settings = manager(&app).client().client_settings().await?;
-    // Exact shape unverified: look inside "speed_limits" first, then the
-    // settings object itself for the legacy flat keys.
-    let pick = |nested: Option<&serde_json::Value>, keys: &[&str]| -> Option<u64> {
+    // Verified field names on 3.x: `ulrate` / `dlrate`; -1 = unlimited.
+    let pick = |keys: &[&str]| -> Option<u64> {
         for k in keys {
-            let v = nested
-                .and_then(|n| n.get(*k))
-                .or_else(|| settings.get(*k))
-                .and_then(serde_json::Value::as_u64);
-            if let Some(n) = v {
-                return Some(n).filter(|n| *n > 0);
+            match settings.get(*k) {
+                Some(serde_json::Value::Number(n)) => {
+                    let v = n.as_i64().unwrap_or(-1);
+                    if v > 0 {
+                        return Some(v as u64);
+                    }
+                    return None;
+                }
+                _ => continue,
             }
         }
         None
     };
-    let inner = settings.get("speed_limits");
     Ok(SpeedLimits {
-        up_kbps: pick(inner, &["up", "upload", "speed_limit_up", "rate_limit_up"]),
-        down_kbps: pick(
-            inner,
-            &["down", "download", "speed_limit_down", "rate_limit_down"],
-        ),
+        up_kbps: pick(&["ulrate", "up", "upload"]),
+        down_kbps: pick(&["dlrate", "down", "download"]),
     })
 }
 
@@ -128,9 +126,32 @@ pub async fn set_speed_limits(
     up_kbps: Option<u64>,
     down_kbps: Option<u64>,
 ) -> CmdResult<()> {
-    let up = up_kbps.unwrap_or(0);
-    let down = down_kbps.unwrap_or(0);
+    // None = unlimited, which rslsync represents as -1 (0 is not accepted).
+    let up = up_kbps.map(|v| v as i64).unwrap_or(-1);
+    let down = down_kbps.map(|v| v as i64).unwrap_or(-1);
     manager(&app).client().set_speed_limits(up, down).await
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LicenseState {
+    /// rslsync 3.x gates folder operations on this.
+    pub allowed_to_sync: bool,
+    pub can_use_trial: Option<bool>,
+}
+
+#[tauri::command]
+pub async fn license_state(app: AppHandle) -> CmdResult<LicenseState> {
+    let lic = manager(&app).client().license_info().await?;
+    Ok(LicenseState {
+        allowed_to_sync: lic.allowed_to_sync,
+        can_use_trial: lic.can_use_trial,
+    })
+}
+
+/// Start the free trial period (rslsync 3.x activation path).
+#[tauri::command]
+pub async fn start_trial(app: AppHandle) -> CmdResult<()> {
+    manager(&app).client().start_trial().await
 }
 
 #[tauri::command]

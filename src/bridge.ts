@@ -6,6 +6,7 @@ import type {
   Folder,
   GeneratedSecrets,
   KnownPeer,
+  LicenseState,
   RuntimeStatus,
   SettingsUpdate,
   SpeedLimits,
@@ -25,6 +26,8 @@ export const api = {
     invoke<void>("pause_folder", { id, paused }),
   pauseAll: (paused: boolean) => invoke<void>("pause_all", { paused }),
   generateSecret: () => invoke<GeneratedSecrets>("generate_secret"),
+  licenseState: () => invoke<LicenseState>("license_state"),
+  startTrial: () => invoke<void>("start_trial"),
   getSpeedLimits: () => invoke<SpeedLimits>("get_speed_limits"),
   setSpeedLimits: (upKbps: number | null, downKbps: number | null) =>
     invoke<void>("set_speed_limits", { upKbps, downKbps }),

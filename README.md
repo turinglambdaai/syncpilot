@@ -6,14 +6,14 @@ A native desktop GUI for [Resilio Sync](https://www.resilio.com/individuals/) (`
 
 **English** · [中文](README.zh-CN.md)
 
-SyncPilot runs and manages the official `rslsync` daemon behind a clean desktop app: folders, peers, transfers, pause/resume, speed limits and a tray icon. It talks to Resilio Sync's local Web UI API over loopback only — your keys and files never leave your machine.
+SyncPilot runs and manages the official `rslsync` daemon behind a clean desktop app: folders, peers, transfers, speed limits and a tray icon. It talks to the daemon's local Web UI action API over loopback only — your keys and files never leave your machine.
 
 ## Features
 
 - **Daemon lifecycle** — start/stop with one click, adopt an already-running daemon (systemd, previous session), crash watchdog with exponential backoff, optional keep-running-on-exit
-- **Folders** — add by share key or create new (read & write / read-only keys), pause/resume per folder, remove (files stay on disk)
+- **Folders** — add by share key or create new (read & write / read-only keys), remove (files stay on disk). rslsync 3.x gates syncing behind license activation, and SyncPilot surfaces that state with a one-click free trial
 - **Peers** — connection state, sync progress bars, per-peer transfer speeds
-- **Transfers** — global pause/resume, up/down speed limits, live rate graph
+- **Transfers** — up/down speed limits, live rate graph
 - **Desktop integration** — tray icon with quick actions, hide-to-tray on close, launch at login (XDG autostart)
 - **Safe by construction** — Web UI bound to `127.0.0.1` with app-generated credentials, config written with `0600`
 
@@ -38,11 +38,11 @@ npm run tauri build   # produces deb / rpm / AppImage
 ┌────────────┐  spawn --nodaemon   ┌───────────────┐
 │ SyncPilot  │────────────────────▶│  rslsync      │
 │  (Tauri 2) │◀────────────────────│  (official)   │
-└────────────┘   REST /api/v2 on   └───────────────┘
+└────────────┘   /gui/? action API  └───────────────┘
                  127.0.0.1:<port>
 ```
 
-SyncPilot generates an `rslsync.conf` (loopback-only Web UI, random credentials, API key), launches the official binary in the foreground, and drives it entirely through the local REST API. All Resilio Sync traffic (P2P, trackers, relays) is handled by the official binary itself; SyncPilot never touches your keys or files.
+SyncPilot generates an `rslsync.conf` (loopback-only Web UI, random credentials, no API key — rslsync 3.x rejects locally generated ones), launches the official binary in the foreground, and drives it through the same action API the official Web UI uses (`/gui/?token=…&action=…` with basic auth). All Resilio Sync traffic (P2P, trackers, relays) is handled by the official binary itself; SyncPilot never touches your keys or files.
 
 ## Developing on Linux
 
@@ -50,7 +50,7 @@ SyncPilot manages a real `rslsync` daemon, so the full stack can only be exercis
 
 ## Status
 
-`v0.1.0` — first release. The `/api/v2` surface is documented from the official Web UI and the official API sample; field parsing is lenient across rslsync builds. If something renders empty on your build, please open an issue with your `rslsync --version`.
+The client targets the Web UI **action API**, verified live against rslsync 3.1.2 — see [docs/api-verified.md](docs/api-verified.md) for the protocol transcript and the 3.x licensing gate. Field parsing is lenient across rslsync builds; if something renders empty on your build, please open an issue with your `rslsync --version`.
 
 ## License
 

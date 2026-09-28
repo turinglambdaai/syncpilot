@@ -68,17 +68,7 @@ function renderTopbar() {
 
   const actions = el("div", "topbar-actions");
   if (phase === "running") {
-    const paused = state.status?.paused ?? false;
-    const pauseBtn = el("button", "btn ghost", paused ? "Resume All" : "Pause All");
-    pauseBtn.onclick = async () => {
-      try {
-        await api.pauseAll(!paused);
-        toast(paused ? "Syncing resumed" : "Syncing paused");
-      } catch (e) {
-        toast(String(e), "err");
-      }
-    };
-    actions.append(pauseBtn);
+    // No pause/resume control: rslsync 3.x has no global-pause action.
     const stopBtn = el("button", "btn ghost danger", "Stop Daemon");
     stopBtn.onclick = async () => {
       try {
@@ -153,9 +143,14 @@ async function tick() {
     const d = await api.daemonStatus();
     state.daemon = d;
     if (d.phase === "running") {
-      const [st, folders] = await Promise.all([api.syncStatus(), api.listFolders()]);
+      const [st, folders, lic] = await Promise.all([
+        api.syncStatus(),
+        api.listFolders(),
+        api.licenseState().catch(() => null),
+      ]);
       state.status = st;
       state.folders = folders ?? [];
+      state.license = lic;
       if (st) {
         state.history.push({ up: st.speed_up, down: st.speed_down });
         if (state.history.length > 90) state.history.shift();
@@ -163,6 +158,7 @@ async function tick() {
     } else {
       state.status = null;
       state.folders = [];
+      state.license = null;
     }
     refreshDynamic();
   } catch (e) {

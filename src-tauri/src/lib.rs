@@ -76,6 +76,8 @@ pub fn run() {
             commands::generate_secret,
             commands::get_speed_limits,
             commands::set_speed_limits,
+            commands::license_state,
+            commands::start_trial,
             commands::get_app_settings,
             commands::update_app_settings,
             commands::get_autostart,
@@ -104,11 +106,9 @@ pub fn run() {
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open SyncPilot", true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
-    let pause = MenuItem::with_id(app, "pause", "Pause Syncing", true, None::<&str>)?;
-    let resume = MenuItem::with_id(app, "resume", "Resume Syncing", true, None::<&str>)?;
-    let sep2 = PredefinedMenuItem::separator(app)?;
+    // No pause/resume entries: rslsync 3.x has no global-pause action.
     let quit = MenuItem::with_id(app, "quit", "Quit SyncPilot", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &sep, &pause, &resume, &sep2, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &sep, &quit])?;
 
     let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))
         .expect("bundled tray icon parses")
@@ -121,18 +121,6 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => show_main_window(app),
-            "pause" => {
-                let h = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    let _ = h.state::<Manager>().client().pause_all(true).await;
-                });
-            }
-            "resume" => {
-                let h = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    let _ = h.state::<Manager>().client().pause_all(false).await;
-                });
-            }
             "quit" => {
                 let _ = app.emit("app://quit-requested", ());
                 app.exit(0);
