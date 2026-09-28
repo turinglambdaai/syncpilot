@@ -44,6 +44,10 @@ npm run tauri build   # produces deb / rpm / AppImage
 
 SyncPilot generates an `rslsync.conf` (loopback-only Web UI, random credentials, API key), launches the official binary in the foreground, and drives it entirely through the local REST API. All Resilio Sync traffic (P2P, trackers, relays) is handled by the official binary itself; SyncPilot never touches your keys or files.
 
+## Developing on Linux
+
+SyncPilot manages a real `rslsync` daemon, so the full stack can only be exercised on Linux (native, VM, or WSL2). See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — a one-shot `scripts/setup-dev-ubuntu.sh` plus `scripts/verify-api.sh`, which probes the live rslsync API and dumps a report used to keep the Rust client aligned with facts.
+
 ## Status
 
 `v0.1.0` — first release. The `/api/v2` surface is documented from the official Web UI and the official API sample; field parsing is lenient across rslsync builds. If something renders empty on your build, please open an issue with your `rslsync --version`.

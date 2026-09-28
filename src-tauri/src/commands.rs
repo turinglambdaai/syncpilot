@@ -49,7 +49,7 @@ pub async fn list_folders(app: AppHandle) -> CmdResult<Vec<Folder>> {
     if !running(&app) {
         return Ok(Vec::new());
     }
-    manager(&app).client().folders().await
+    manager(&app).client().folders_detailed().await
 }
 
 #[tauri::command]
@@ -97,16 +97,28 @@ pub struct SpeedLimits {
 
 #[tauri::command]
 pub async fn get_speed_limits(app: AppHandle) -> CmdResult<SpeedLimits> {
-    let prefs = manager(&app).client().prefs().await?;
-    let limit = |key: &str| -> Option<u64> {
-        match prefs.get(key) {
-            Some(serde_json::Value::Number(n)) => n.as_u64().filter(|v| *v > 0),
-            _ => None,
+    let settings = manager(&app).client().client_settings().await?;
+    // Exact shape unverified: look inside "speed_limits" first, then the
+    // settings object itself for the legacy flat keys.
+    let pick = |nested: Option<&serde_json::Value>, keys: &[&str]| -> Option<u64> {
+        for k in keys {
+            let v = nested
+                .and_then(|n| n.get(*k))
+                .or_else(|| settings.get(*k))
+                .and_then(serde_json::Value::as_u64);
+            if let Some(n) = v {
+                return Some(n).filter(|n| *n > 0);
+            }
         }
+        None
     };
+    let inner = settings.get("speed_limits");
     Ok(SpeedLimits {
-        up_kbps: limit("rate_limit_up"),
-        down_kbps: limit("rate_limit_down"),
+        up_kbps: pick(inner, &["up", "upload", "speed_limit_up", "rate_limit_up"]),
+        down_kbps: pick(
+            inner,
+            &["down", "download", "speed_limit_down", "rate_limit_down"],
+        ),
     })
 }
 
