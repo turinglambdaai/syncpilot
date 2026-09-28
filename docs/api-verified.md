@@ -12,7 +12,10 @@ Ubuntu; anything still uncertain is marked so.
   must carry the credentials; there is no login endpoint.
 - CSRF token: `POST /gui/token.html?t=<ms>` returns
   `<html><div id='token' style='display:none;'>TOKEN</div></html>` — the
-  official Web UI extracts `>([^<]+)<`; so do we.
+  official Web UI extracts `>([^<]+)<`; so do we. The token is **bound to
+  the HTTP session**: it must be requested and used with the same cookie
+  jar (the client keeps a cookie store). A valid token presented without
+  its session cookie answers `invalid request` like a stale one.
 - Action call: `GET /gui/?token=<TOK>&action=<name>&<params>&t=<ms>`.
   A stale/missing token answers **HTTP 400** with body `invalid request`;
   refresh the token and retry once. Wrong credentials answer **HTTP 401**

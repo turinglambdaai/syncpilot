@@ -52,6 +52,11 @@ pub fn settings_path(dir: &Path) -> PathBuf {
 impl AppSettings {
     /// Load settings, creating defaults (with fresh credentials) on first run.
     /// A corrupt file is moved aside rather than failing the app.
+    ///
+    /// The freshly generated instance is both persisted AND returned —
+    /// returning a second `default()` would silently fork the credentials:
+    /// the file keeps one random password while the app (and the conf it
+    /// writes for the daemon) uses another, and the two can never talk.
     pub fn load(dir: &Path) -> Self {
         let path = settings_path(dir);
         match fs::read_to_string(&path) {
@@ -59,13 +64,15 @@ impl AppSettings {
                 Ok(s) => s,
                 Err(_) => {
                     let _ = fs::rename(&path, path.with_extension("json.bak"));
-                    Self::default().persist(dir);
-                    Self::default()
+                    let fresh = Self::default();
+                    fresh.persist(dir);
+                    fresh
                 }
             },
             Err(_) => {
-                Self::default().persist(dir);
-                Self::default()
+                let fresh = Self::default();
+                fresh.persist(dir);
+                fresh
             }
         }
     }
@@ -146,6 +153,19 @@ mod tests {
             third.api_key, first.api_key,
             "credentials must survive reload"
         );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn first_load_returns_the_persisted_instance() {
+        // Regression: first load used to persist one random credential set
+        // and return a second one, forking the app/daemon credentials.
+        let dir = temp_dir("first-load");
+        let returned = AppSettings::load(&dir);
+        let stored: AppSettings =
+            serde_json::from_str(&fs::read_to_string(settings_path(&dir)).unwrap()).unwrap();
+        assert_eq!(returned.webui_password, stored.webui_password);
+        assert_eq!(returned.webui_login, stored.webui_login);
         let _ = fs::remove_dir_all(&dir);
     }
 
