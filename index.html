@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SyncPilot</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <div class="side-head">
+          <img src="/icon.png" class="side-logo" alt="" />
+          <div class="side-title">SyncPilot</div>
+        </div>
+        <nav id="nav-items"></nav>
+        <div class="side-foot">
+          <button id="nav-settings" class="nav-item">
+            <span class="nav-glyph">⚙</span><span>Settings</span>
+          </button>
+          <div id="side-version" class="side-version"></div>
+        </div>
+      </aside>
+      <main id="main">
+        <div id="topbar"></div>
+        <div id="view"></div>
+      </main>
+    </div>
+    <div id="toasts"></div>
+  </body>
+</html>

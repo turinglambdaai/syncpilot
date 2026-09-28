@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SyncPilot",
+  "version": "0.1.0",
+  "identifier": "site.jrtx.syncpilot",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "SyncPilot",
+        "width": 1160,
+        "height": 760,
+        "minWidth": 960,
+        "minHeight": 620,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "rpm", "appimage"],
+    "category": "Network",
+    "shortDescription": "Native desktop GUI for Resilio Sync on Linux",
+    "longDescription": "SyncPilot is an unofficial native desktop GUI for Resilio Sync (rslsync) on Linux. It manages the rslsync daemon, folders, peers and transfers from a clean desktop app, matching the experience of the official Windows and macOS clients.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

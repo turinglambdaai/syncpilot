@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SyncPilot — Resilio Sync GUI for Linux</title>
+    <meta
+      name="description"
+      content="Native desktop GUI for Resilio Sync (rslsync) on Linux: folders, peers, transfers and tray integration. Free, AGPL-3.0."
+    />
+    <style>
+      :root {
+        --text: #182234;
+        --muted: #67718a;
+        --accent: #2563eb;
+        --line: #e3e7ee;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        background: #f4f6f9;
+        line-height: 1.6;
+      }
+      main { max-width: 820px; margin: 0 auto; padding: 64px 24px; }
+      .hero { display: flex; align-items: center; gap: 18px; }
+      .hero img { width: 72px; height: 72px; border-radius: 16px; }
+      h1 { font-size: 34px; margin: 0; }
+      .tagline { font-size: 18px; color: var(--muted); margin: 6px 0 32px; }
+      h2 { font-size: 20px; margin-top: 40px; }
+      code {
+        background: #e9edf4;
+        padding: 2px 6px;
+        border-radius: 5px;
+        font-size: 0.9em;
+      }
+      ul { padding-left: 22px; }
+      li { margin: 6px 0; }
+      .cta {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 10px 22px;
+        background: var(--accent);
+        color: #fff;
+        border-radius: 9px;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      footer {
+        margin-top: 64px;
+        border-top: 1px solid var(--line);
+        padding-top: 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .shot {
+        margin: 28px 0;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        padding: 18px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="hero">
+        <img src="https://raw.githubusercontent.com/turinglambdaai/syncpilot/main/public/icon.png" alt="SyncPilot icon" />
+        <div>
+          <h1>SyncPilot</h1>
+          <p class="tagline">The Resilio Sync desktop client Linux deserves.</p>
+        </div>
+      </div>
+
+      <p>
+        Resilio Sync ships official GUI clients for Windows and macOS — on Linux you only get a
+        Web UI. <strong>SyncPilot</strong> wraps the official <code>rslsync</code> binary in a
+        native desktop app: folders, peers, transfers, pause/resume, speed limits and a tray
+        icon, talking to the daemon over loopback only.
+      </p>
+
+      <div class="shot">
+        Screenshot placeholder — overview page with transfer-rate graph and folder grid.
+      </div>
+
+      <h2>Highlights</h2>
+      <ul>
+        <li>One-click daemon lifecycle with crash watchdog and already-running adoption</li>
+        <li>Add folders by share key or create new ones with read &amp; write / read-only keys</li>
+        <li>Peer connection state, sync progress and per-peer speeds</li>
+        <li>Global pause/resume, up/down speed limits, live rate graph</li>
+        <li>Tray icon, hide-to-tray, launch at login</li>
+        <li>Web UI forced to <code>127.0.0.1</code> with app-generated credentials</li>
+      </ul>
+
+      <h2>Get it</h2>
+      <p>
+        deb / rpm / AppImage for x86_64 and aarch64 from GitHub Releases. Requires the official
+        <code>rslsync</code> binary on the system.
+      </p>
+      <a class="cta" href="https://github.com/turinglambdaai/syncpilot/releases">Download</a>
+
+      <footer>
+        SyncPilot is free software under AGPL-3.0 and is not affiliated with Resilio, Inc.
+        <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a>
+      </footer>
+    </main>
+  </body>
+</html>
