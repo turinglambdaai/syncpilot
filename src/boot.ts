@@ -40,14 +40,18 @@ async function handOff() {
     if (/binary not found/i.test(message)) {
       renderInstallCard();
     } else {
-      renderRetryCard();
+      renderRetryCard(message);
     }
   }
 }
 
-function renderRetryCard() {
+function renderRetryCard(message: string) {
   reset();
-  setStatus("The daemon is not ready yet.");
+  setStatus("The daemon is not ready.");
+  // Real failures (port conflict, rejected credentials, spawn errors) need
+  // a human decision — show the reason and retry only on click, so the
+  // card cannot flicker in an endless auto-retry loop.
+  detailEl.textContent = message;
   const retry = button("Retry");
   retry.onclick = () => {
     retry.disabled = true;
@@ -55,7 +59,6 @@ function renderRetryCard() {
   };
   actionsEl.append(retry);
   actionsEl.append(settingsButton());
-  setTimeout(() => void handOff(), 3000);
 }
 
 function renderInstallCard() {

@@ -19,6 +19,19 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 const EP_TOKEN: &str = "/gui/token.html";
 const EP_ACTION: &str = "/gui/";
 
+/// Outcome of probing the configured Web UI port.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PortProbe {
+    /// A daemon answered and accepted our credentials — ours to drive.
+    Compatible,
+    /// Something answered but rejected our credentials: a foreign daemon
+    /// (often a leftover system service running as another user) owns the
+    /// port. Must be reported, never adopted.
+    Foreign,
+    /// Nothing answered.
+    Unreachable,
+}
+
 #[derive(Clone)]
 pub struct ResilioClient {
     base: Arc<String>,
@@ -45,17 +58,23 @@ impl ResilioClient {
         }
     }
 
-    /// True when something answers on the configured loopback port
-    /// (401 still means a daemon is there, just unauthenticated).
-    pub async fn ping(&self) -> bool {
-        matches!(
-            self.http
-                .get(format!("{}{EP_ACTION}", self.base))
-                .basic_auth(self.login.as_str(), Some(self.password.as_str()))
-                .send()
-                .await,
-            Ok(r) if r.status().as_u16() == 200 || r.status().as_u16() == 401
-        )
+    /// Probe the configured Web UI port. Adopting a daemon requires
+    /// `Compatible`: a 401 means a foreign daemon (often a leftover systemd
+    /// service running as a different user) owns the port and must be
+    /// reported, never adopted — driving it would be impossible and it may
+    /// lack the user's own file permissions.
+    pub async fn probe_port(&self) -> PortProbe {
+        match self
+            .http
+            .get(format!("{}{EP_ACTION}", self.base))
+            .basic_auth(self.login.as_str(), Some(self.password.as_str()))
+            .send()
+            .await
+        {
+            Ok(r) if r.status().is_success() => PortProbe::Compatible,
+            Ok(r) if matches!(r.status().as_u16(), 401 | 403) => PortProbe::Foreign,
+            _ => PortProbe::Unreachable,
+        }
     }
 
     /// POST /gui/token.html and pull the CSRF token out of the HTML wrapper
@@ -315,7 +334,11 @@ mod tests {
             ("shutdown", 200, json!({"status":200}).to_string()),
         ]);
         let c = ResilioClient::new(port, "u", "p");
-        assert!(c.ping().await, "mock must answer on its port");
+        assert_eq!(
+            c.probe_port().await,
+            PortProbe::Compatible,
+            "mock must answer on its port"
+        );
 
         let v = c.version().await.expect("version");
         assert_eq!(v, "3.1.2 (1076)");
@@ -325,5 +348,49 @@ mod tests {
         assert!(err.contains("unknown action"), "got: {err}");
 
         c.shutdown().await.expect("shutdown");
+    }
+
+    /// One-shot listener answering every request with a fixed status.
+    async fn spawn_status_listener(status: u16) -> u16 {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            loop {
+                let Ok((mut stream, _)) = listener.accept().await else {
+                    break;
+                };
+                let resp = format!(
+                    "HTTP/1.1 {status} X\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                );
+                use tokio::io::AsyncWriteExt;
+                let _ = stream.write_all(resp.as_bytes()).await;
+            }
+        });
+        port
+    }
+
+    #[tokio::test]
+    async fn probe_port_distinguishes_compatible_foreign_and_absent() {
+        // Compatible: 200 on the Web UI surface.
+        let ok = spawn_status_listener(200).await;
+        let c = ResilioClient::new(ok, "u", "p");
+        assert_eq!(c.probe_port().await, PortProbe::Compatible);
+
+        // Foreign: a daemon that rejects our credentials (basic auth 401) —
+        // the regression case that used to be adopted blindly.
+        let unauthorized = spawn_status_listener(401).await;
+        let c = ResilioClient::new(unauthorized, "u", "p");
+        assert_eq!(c.probe_port().await, PortProbe::Foreign);
+
+        let forbidden = spawn_status_listener(403).await;
+        let c = ResilioClient::new(forbidden, "u", "p");
+        assert_eq!(c.probe_port().await, PortProbe::Foreign);
+
+        // Unreachable: bind a port, drop the listener, then probe it.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let c = ResilioClient::new(port, "u", "p");
+        assert_eq!(c.probe_port().await, PortProbe::Unreachable);
     }
 }

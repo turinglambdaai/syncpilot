@@ -6,6 +6,9 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ### Fixed
 
+- A foreign daemon holding SyncPilot's port is no longer adopted: port probing now distinguishes compatible / foreign / absent, and a credentials mismatch (e.g. a leftover systemd service) surfaces as an actionable error on the boot page instead of a silently unusable session
+- The boot page shows the actual failure reason and retries only on click, so real errors can no longer loop behind an auto-retry
+
 - Generated `rslsync.conf` now sets `"agree_to_EULA": "yes"` — rslsync 3.x exits immediately without it, so app-spawned daemons never started on 3.1.2
 - The conf no longer writes an `api_key`: rslsync 3.x validates keys against Resilio-issued signed keys and refuses to start on a locally generated one
 - `AppSettings::load` no longer forks credentials on first run: it used to persist one random password and return a second, leaving the app unable to authenticate to its own daemon until the next launch (verified live on a fresh install)

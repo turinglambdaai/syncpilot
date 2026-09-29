@@ -90,6 +90,10 @@ impl Manager {
         ResilioClient::new(s.webui_port, &s.webui_login, &s.webui_password)
     }
 
+    fn port(&self) -> u16 {
+        self.settings.lock().unwrap().webui_port
+    }
+
     /// Find the rslsync binary: explicit setting, well-known paths, then $PATH.
     pub fn find_binary(&self) -> Option<PathBuf> {
         let explicit = self.settings.lock().unwrap().rslsync_path.clone();
@@ -108,8 +112,11 @@ impl Manager {
         candidates.into_iter().find(|p| is_executable_file(p))
     }
 
-    /// Make sure a daemon answers on our port. Adopts one that is already
-    /// running (e.g. started by systemd or kept from a previous session).
+    /// Make sure a daemon answers on our port AND accepts our credentials.
+    /// Adopts a compatible already-running daemon (e.g. kept from a previous
+    /// session with `keep_daemon_on_exit`). A foreign daemon on the port is
+    /// an explicit error, never adopted: we could not drive it, and it may
+    /// run as a different user without the user's file permissions.
     pub async fn ensure_running(&self, app: &AppHandle) -> Result<(), String> {
         {
             let g = self.inner.lock().unwrap();
@@ -117,14 +124,26 @@ impl Manager {
                 return Ok(());
             }
         }
-        if self.client().ping().await {
-            let mut g = self.inner.lock().unwrap();
-            g.phase = Phase::Running;
-            g.manual_stop = false;
-            g.error = None;
-            drop(g);
-            let _ = app.emit("daemon://changed", self.status());
-            return Ok(());
+        match self.client().probe_port().await {
+            crate::api::PortProbe::Compatible => {
+                let mut g = self.inner.lock().unwrap();
+                g.phase = Phase::Running;
+                g.manual_stop = false;
+                g.error = None;
+                drop(g);
+                let _ = app.emit("daemon://changed", self.status());
+                return Ok(());
+            }
+            crate::api::PortProbe::Foreign => {
+                let err = port_conflict_error(self.port());
+                let mut g = self.inner.lock().unwrap();
+                g.phase = Phase::Failed;
+                g.error = Some(err.clone());
+                drop(g);
+                let _ = app.emit("daemon://changed", self.status());
+                return Err(err);
+            }
+            crate::api::PortProbe::Unreachable => {}
         }
         self.spawn_and_wait(app).await
     }
@@ -165,16 +184,25 @@ impl Manager {
 
         let client = self.client();
         let deadline = Instant::now() + Duration::from_secs(30);
+        let mut conflict: Option<String> = None;
         while Instant::now() < deadline {
-            if client.ping().await {
-                let mut g = self.inner.lock().unwrap();
-                if let Some(c) = g.child.as_mut() {
-                    let _ = c.try_wait();
+            match client.probe_port().await {
+                crate::api::PortProbe::Compatible => {
+                    let mut g = self.inner.lock().unwrap();
+                    if let Some(c) = g.child.as_mut() {
+                        let _ = c.try_wait();
+                    }
+                    g.phase = Phase::Running;
+                    drop(g);
+                    let _ = app.emit("daemon://changed", self.status());
+                    return Ok(());
                 }
-                g.phase = Phase::Running;
-                drop(g);
-                let _ = app.emit("daemon://changed", self.status());
-                return Ok(());
+                crate::api::PortProbe::Foreign => {
+                    // Something else took the port while we were starting.
+                    conflict = Some(port_conflict_error(self.port()));
+                    break;
+                }
+                crate::api::PortProbe::Unreachable => {}
             }
             let exited = {
                 let mut g = self.inner.lock().unwrap();
@@ -191,12 +219,14 @@ impl Manager {
 
         let err = {
             let mut g = self.inner.lock().unwrap();
-            let err = g
-                .child
-                .as_mut()
-                .and_then(|c| c.try_wait().ok().flatten())
-                .and_then(|st| st.code())
-                .map(|c| format!("rslsync exited with code {c}"))
+            let err = conflict
+                .or_else(|| {
+                    g.child
+                        .as_mut()
+                        .and_then(|c| c.try_wait().ok().flatten())
+                        .and_then(|st| st.code())
+                        .map(|c| format!("rslsync exited with code {c}"))
+                })
                 .unwrap_or_else(|| "daemon did not answer within 30s".into());
             g.phase = Phase::Failed;
             g.error = Some(err.clone());
@@ -272,6 +302,14 @@ fn is_executable_file(p: &Path) -> bool {
     }
 }
 
+fn port_conflict_error(port: u16) -> String {
+    format!(
+        "Port {port} is used by another Resilio Sync daemon with different credentials — \
+         often a leftover system service. Quit that daemon, or change SyncPilot's port \
+         under tray → SyncPilot Settings…, then retry."
+    )
+}
+
 /// Background watchdog: restart the daemon with backoff after a crash.
 pub async fn supervisor(app: AppHandle) {
     let mut backoff_secs = 2u64;
@@ -314,5 +352,18 @@ pub async fn supervisor(app: AppHandle) {
             }
             let _ = app.emit("daemon://changed", m.status());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn port_conflict_message_names_the_port_and_remedies() {
+        let msg = port_conflict_error(38889);
+        assert!(msg.contains("38889"));
+        assert!(msg.contains("Settings"));
+        assert!(msg.to_lowercase().contains("credentials"));
     }
 }
