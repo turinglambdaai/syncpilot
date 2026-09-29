@@ -45,18 +45,28 @@ pub async fn install_official_binary() -> Result<PathBuf, String> {
         .timeout(std::time::Duration::from_secs(300))
         .build()
         .map_err(|e| format!("http client: {e}"))?;
-    let resp = http
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| format!("download failed: {e}"))?;
-    if !resp.status().is_success() {
-        return Err(format!("download failed: HTTP {}", resp.status()));
+
+    // Transient CDN/network failures are common enough to retry a couple of
+    // times before surfacing an error to the user.
+    let mut bytes = None;
+    let mut last_err = String::new();
+    for attempt in 1..=3 {
+        match download(&http, url).await {
+            Ok(b) => {
+                bytes = Some(b);
+                break;
+            }
+            Err(e) => {
+                last_err = e;
+                if attempt < 3 {
+                    tokio::time::sleep(std::time::Duration::from_secs(2 * attempt as u64)).await;
+                }
+            }
+        }
     }
-    let bytes = resp
-        .bytes()
-        .await
-        .map_err(|e| format!("download body read failed: {e}"))?;
+    let bytes = bytes.ok_or_else(|| {
+        format!("{last_err} — check your network connection and retry, or install Resilio Sync manually")
+    })?;
 
     verify_sha256(&bytes, expected)?;
 
@@ -72,6 +82,24 @@ pub async fn install_official_binary() -> Result<PathBuf, String> {
             .map_err(|e| format!("chmod {}: {e}", target.display()))?;
     }
     Ok(target)
+}
+
+async fn download(http: &reqwest::Client, url: &str) -> Result<Vec<u8>, String> {
+    let resp = http
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("download failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!(
+            "download failed: HTTP {} from {url}",
+            resp.status()
+        ));
+    }
+    resp.bytes()
+        .await
+        .map(|b| b.to_vec())
+        .map_err(|e| format!("download body read failed: {e}"))
 }
 
 /// SHA-256 mismatch is a hard stop: the binary is executed, not inspected.
