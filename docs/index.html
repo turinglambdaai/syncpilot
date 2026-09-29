@@ -1,143 +1,354 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SyncPilot — the official Resilio Sync experience on Linux</title>
-    <meta
-      name="description"
-      content="Native Linux desktop shell for Resilio Sync: the official Web UI in a real desktop window, with tray, autostart, daemon watchdog and in-app updates. Free, AGPL-3.0."
-    />
-    <style>
-      :root {
-        --text: #182234;
-        --muted: #67718a;
-        --accent: #2563eb;
-        --line: #e3e7ee;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
-        color: var(--text);
-        background: #f4f6f9;
-        line-height: 1.6;
-      }
-      main { max-width: 820px; margin: 0 auto; padding: 64px 24px; }
-      .hero { display: flex; align-items: center; gap: 18px; }
-      .hero img { width: 72px; height: 72px; border-radius: 16px; }
-      h1 { font-size: 34px; margin: 0; }
-      .tagline { font-size: 18px; color: var(--muted); margin: 6px 0 32px; }
-      h2 { font-size: 20px; margin-top: 40px; }
-      code {
-        background: #e9edf4;
-        padding: 2px 6px;
-        border-radius: 5px;
-        font-size: 0.9em;
-      }
-      ul { padding-left: 22px; }
-      li { margin: 6px 0; }
-      .cta {
-        display: inline-block;
-        margin-top: 8px;
-        padding: 10px 22px;
-        background: var(--accent);
-        color: #fff;
-        border-radius: 9px;
-        text-decoration: none;
-        font-weight: 600;
-      }
-      .cta.secondary {
-        background: transparent;
-        color: var(--accent);
-        border: 1px solid var(--accent);
-        margin-left: 10px;
-      }
-      .assets { font-size: 14px; color: var(--muted); margin-top: 14px; }
-      .assets a { color: var(--accent); text-decoration: none; }
-      footer {
-        margin-top: 64px;
-        border-top: 1px solid var(--line);
-        padding-top: 20px;
-        color: var(--muted);
-        font-size: 14px;
-      }
-      .shot {
-        margin: 28px 0;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: #fff;
-        padding: 18px;
-        color: var(--muted);
-        font-size: 14px;
-      }
-      .pill {
-        display: inline-block;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-        background: #e7eefc;
-        border-radius: 999px;
-        padding: 3px 12px;
-        margin-bottom: 10px;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <div class="hero">
-        <img src="https://raw.githubusercontent.com/turinglambdaai/syncpilot/main/public/icon.png" alt="SyncPilot icon" />
-        <div>
-          <h1>SyncPilot</h1>
-          <p class="tagline">The official Resilio Sync experience, on Linux.</p>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SyncPilot — the official Resilio Sync experience on Linux</title>
+<meta name="description" content="Native Linux desktop shell for Resilio Sync: the official Web UI in a real desktop window, with tray, autostart, daemon watchdog and in-app updates. Free, AGPL-3.0." />
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/turinglambdaai/syncpilot/main/public/icon.png" />
+<style>
+:root {
+  --bg: #F5F5F7;
+  --bg-card: #FFFFFF;
+  --text: #1D1D1F;
+  --text-2: #6E6E73;
+  --text-3: #8E8E93;
+  --accent: #1E7BE0;
+  --accent-hover: #1663B8;
+  --accent-soft: rgba(30, 123, 224, 0.14);
+  --accent-tint: rgba(30, 123, 224, 0.08);
+  --navy: #1D1D42;
+  --border: rgba(0, 0, 0, 0.10);
+  --border-strong: rgba(0, 0, 0, 0.16);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --wrapper-width: 1080px;
+  --radius-l: 20px;
+  --radius-m: 14px;
+  --radius-s: 10px;
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05);
+  --shadow-hover: 0 2px 4px rgba(0,0,0,0.05), 0 14px 40px rgba(0,0,0,0.09);
+  --shadow-window: 0 30px 70px rgba(0,0,0,0.13), 0 8px 20px rgba(0,0,0,0.06);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.container { max-width: var(--wrapper-width); margin: 0 auto; padding: 0 24px; }
+section { padding: 72px 0; }
+
+/* ---- nav ---- */
+nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(245, 245, 247, 0.82);
+  backdrop-filter: saturate(1.6) blur(14px);
+  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-wrapper {
+  max-width: var(--wrapper-width); margin: 0 auto; padding: 0 24px;
+  height: 60px; display: flex; align-items: center; justify-content: space-between;
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 19px; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+.nav-brand img { width: 30px; height: 30px; border-radius: 8px; }
+.nav-links { display: flex; align-items: center; gap: 26px; }
+.nav-links a { color: var(--text-2); text-decoration: none; font-size: 14.5px; font-weight: 500; }
+.nav-links a:hover { color: var(--text); }
+.nav-links a.nav-cta {
+  background: var(--accent); color: #fff; padding: 7px 16px; border-radius: 999px; font-weight: 600;
+}
+.nav-links a.nav-cta:hover { background: var(--accent-hover); color: #fff; }
+
+/* ---- hero ---- */
+.hero { text-align: center; padding: 88px 0 64px; }
+.eyebrow {
+  display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--accent); background: var(--accent-tint);
+  padding: 5px 14px; border-radius: 999px; margin-bottom: 22px;
+}
+h1 {
+  font-size: clamp(38px, 6vw, 60px); line-height: 1.06; letter-spacing: -0.028em;
+  margin: 0 0 20px; font-weight: 700;
+}
+h1 .soft { color: var(--text-3); }
+.hero-sub { font-size: 20px; color: var(--text-2); max-width: 660px; margin: 0 auto 34px; }
+.hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 26px; border-radius: var(--radius-s);
+  font-size: 16px; font-weight: 600; text-decoration: none;
+  transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease), background 0.15s;
+}
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 6px 18px var(--accent-soft); }
+.btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-card); }
+.btn-secondary:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+.trust-row { margin-top: 18px; font-size: 13.5px; color: var(--text-3); }
+.trust-row b { color: var(--text-2); font-weight: 600; }
+
+/* ---- window mockup ---- */
+.hero-visual { max-width: 940px; margin: 60px auto 0; position: relative; }
+.code-window {
+  background: #1E1E22; border-radius: var(--radius-m); overflow: hidden;
+  box-shadow: var(--shadow-window); border: 1px solid rgba(255,255,255,0.07);
+}
+.window-header {
+  display: flex; align-items: center; padding: 11px 14px;
+  background: rgba(255,255,255,0.045); border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.window-controls { display: flex; gap: 8px; }
+.traffic-light { width: 11px; height: 11px; border-radius: 50%; }
+.traffic-light.close { background: #FF5F57; }
+.traffic-light.minimize { background: #FEBC2E; }
+.traffic-light.maximize { background: #28C840; }
+.window-title { flex: 1; text-align: center; font-size: 13px; color: rgba(255,255,255,0.55); font-family: var(--font-mono); padding-right: 52px; }
+.window-body img { display: block; width: 100%; height: auto; }
+
+/* ---- features ---- */
+.section-head { text-align: center; max-width: 640px; margin: 0 auto 48px; }
+h2 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -0.022em; margin: 0 0 14px; font-weight: 700; }
+.section-head p { color: var(--text-2); font-size: 17px; margin: 0; }
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px;
+}
+.card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-m);
+  padding: 26px 26px 24px; box-shadow: var(--shadow-card);
+  transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease);
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.card .icon {
+  width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+  background: var(--accent-tint); color: var(--accent); margin-bottom: 16px;
+}
+.card .icon svg { width: 22px; height: 22px; }
+.card h3 { margin: 0 0 7px; font-size: 16.5px; font-weight: 650; letter-spacing: -0.01em; }
+.card p { margin: 0; color: var(--text-2); font-size: 14.5px; line-height: 1.55; }
+
+/* ---- how ---- */
+.how { background: var(--bg-card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.steps { display: flex; align-items: stretch; justify-content: center; gap: 0; flex-wrap: wrap; }
+.step {
+  flex: 1 1 240px; max-width: 300px; text-align: center; padding: 10px 22px;
+}
+.step-num {
+  width: 40px; height: 40px; margin: 0 auto 14px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: 16px;
+  box-shadow: 0 6px 16px var(--accent-soft);
+}
+.step h3 { margin: 0 0 6px; font-size: 16.5px; }
+.step p { margin: 0; color: var(--text-2); font-size: 14.5px; }
+.step-arrow { align-self: center; color: var(--text-3); font-size: 26px; padding: 0 6px; }
+@media (max-width: 760px) { .step-arrow { display: none; } }
+
+/* ---- security strip ---- */
+.secure {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: var(--accent-tint); border: 1px solid var(--accent-soft);
+  border-radius: var(--radius-m); padding: 22px 26px; max-width: 780px; margin: 0 auto;
+}
+.secure svg { flex: none; width: 24px; height: 24px; color: var(--accent); margin-top: 2px; }
+.secure p { margin: 0; font-size: 15px; color: var(--text-2); }
+.secure b { color: var(--text); }
+
+/* ---- download ---- */
+.dl-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; max-width: 940px; margin: 0 auto; }
+.dl-card {
+  display: flex; align-items: center; gap: 14px; text-decoration: none;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-m);
+  padding: 18px 20px; box-shadow: var(--shadow-card); color: var(--text);
+  transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease);
+}
+.dl-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.dl-card .dl-icon { width: 38px; height: 38px; border-radius: 9px; background: var(--accent-tint); display: flex; align-items: center; justify-content: center; color: var(--accent); flex: none; }
+.dl-card b { display: block; font-size: 15px; }
+.dl-card span { display: block; font-size: 12.5px; color: var(--text-3); }
+.dl-note { text-align: center; color: var(--text-3); font-size: 14px; margin-top: 18px; }
+
+footer {
+  border-top: 1px solid var(--border); padding: 34px 24px; text-align: center;
+  color: var(--text-3); font-size: 13.5px;
+}
+footer a { color: var(--text-2); text-decoration: none; font-weight: 500; }
+footer a:hover { color: var(--text); }
+
+/* ---- scroll animation ---- */
+.animate { opacity: 0; transform: translateY(18px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+.animate.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .animate { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-wrapper">
+    <a class="nav-brand" href="#"><img src="https://raw.githubusercontent.com/turinglambdaai/syncpilot/main/public/icon.png" alt="" />SyncPilot</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="https://github.com/turinglambdaai/syncpilot#readme">Docs</a>
+      <a href="https://github.com/turinglambdaai/syncpilot">GitHub</a>
+      <a class="nav-cta" href="#download">Download</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="eyebrow animate">Resilio Sync desktop client for Linux</div>
+    <h1 class="animate">The official Resilio Sync experience,<br /><span class="soft">finally on Linux.</span></h1>
+    <p class="hero-sub animate">
+      SyncPilot puts the <strong>official Resilio Web UI</strong> inside a native desktop window and
+      manages the official <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> daemon behind it.
+      Every screen is the official one — nothing to re-learn.
+    </p>
+    <div class="hero-actions animate">
+      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest">Download v0.2.0</a>
+      <a class="btn btn-secondary" href="https://github.com/turinglambdaai/syncpilot">View on GitHub</a>
+    </div>
+    <div class="trust-row animate"><b>deb</b> · <b>rpm</b> · <b>AppImage</b> &nbsp;—&nbsp; x86_64 &amp; aarch64 &nbsp;—&nbsp; free, AGPL-3.0</div>
+
+    <div class="hero-visual animate">
+      <div class="code-window">
+        <div class="window-header">
+          <div class="window-controls">
+            <span class="traffic-light close"></span>
+            <span class="traffic-light minimize"></span>
+            <span class="traffic-light maximize"></span>
+          </div>
+          <div class="window-title">SyncPilot — Resilio Sync</div>
         </div>
+        <div class="window-body"><img src="screenshot.png" alt="The official Resilio Web UI running inside SyncPilot" /></div>
       </div>
+    </div>
+  </div>
+</section>
 
-      <span class="pill">v0.2.0 · deb · rpm · AppImage · x86_64 + aarch64</span>
-
-      <p>
-        Resilio Sync ships official desktop clients for Windows and macOS — on Linux you only
-        get a Web UI. <strong>SyncPilot</strong> puts the <strong>official Resilio Web UI</strong>
-        inside a native desktop window and manages the official <code>rslsync</code> daemon
-        behind it: every screen, control and workflow is the official one — folders, peers,
-        transfers, preferences, activation — with the desktop integration Linux was missing
-        on top.
-      </p>
-
-      <div class="shot">
-        <img src="screenshot.png" alt="The official Resilio Web UI running inside SyncPilot" style="display:block;width:100%;height:auto;border-radius:6px;" />
+<section id="features">
+  <div class="container">
+    <div class="section-head animate">
+      <h2>Official where it matters,<br />native where it counts.</h2>
+      <p>Folders, peers, transfers, preferences, activation — all of it is the official Resilio interface, version-matched to your rslsync build. SyncPilot adds everything the official Linux story was missing.</p>
+    </div>
+    <div class="grid">
+      <div class="card animate">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 17V9l6 8V9"/></svg></div>
+        <h3>Zero interface drift</h3>
+        <p>The window embeds the official Resilio Web UI itself — same screens, same workflow as the Windows and macOS clients, nothing re-implemented to fall behind.</p>
       </div>
+      <div class="card animate">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg></div>
+        <h3>Daemon lifecycle</h3>
+        <p>One-click start and stop, adopts an already-running daemon, and a crash watchdog restarts it with exponential backoff. Optionally keeps running after the app exits.</p>
+      </div>
+      <div class="card animate">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
+        <h3>First-run setup</h3>
+        <p>No rslsync on the machine? SyncPilot offers to download the official binary straight from Resilio's CDN, sha256-verified, into <code>~/.local/bin</code>.</p>
+      </div>
+      <div class="card animate">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h3>In-app updates</h3>
+        <p>Every release ships signed updater artifacts. SyncPilot checks the GitHub release and updates itself — no manual re-downloads.</p>
+      </div>
+      <div class="card animate">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 3l-4 4-4-4"/></svg></div>
+        <h3>Desktop integration</h3>
+        <p>Tray icon with quick actions, hide-to-tray on close, launch at login via XDG autostart, and a standalone native settings window.</p>
+      </div>
+      <div class="card animate">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg></div>
+        <h3>Safe by construction</h3>
+        <p>The Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy — no login prompts, and the daemon never serves an unauthenticated request.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-      <h2>Highlights</h2>
-      <ul>
-        <li><strong>Official interface, zero drift</strong> — nothing to re-learn, version-matched to your rslsync build; activation and identity setup run through the official wizard</li>
-        <li><strong>Daemon lifecycle</strong> — one-click start/stop, adopts an already-running daemon, crash watchdog with exponential backoff</li>
-        <li><strong>First-run setup</strong> — offers to download the official rslsync binary from Resilio's CDN (sha256-verified) if none is found</li>
-        <li><strong>In-app updates</strong> — signed updater artifacts checked against the GitHub release</li>
-        <li><strong>Desktop integration</strong> — tray icon, hide-to-tray, launch at login, standalone settings window</li>
-        <li><strong>Safe by construction</strong> — the Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy; the daemon never serves an unauthenticated request</li>
-      </ul>
+<section class="how">
+  <div class="container">
+    <div class="section-head animate">
+      <h2>Up and running in three steps</h2>
+      <p>Same feel as installing the official client on any other platform.</p>
+    </div>
+    <div class="steps animate">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Install</h3>
+        <p>Grab the deb, rpm or AppImage for your architecture from the release page.</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Launch</h3>
+        <p>SyncPilot starts the official daemon and hands the window to the official interface. No rslsync yet? One click fetches it.</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Sync</h3>
+        <p>Activate and add folders through the official wizard — exactly like on Windows and macOS.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-      <h2>Get it</h2>
-      <p>
-        Install the package, launch SyncPilot, done — if the official
-        <code>rslsync</code> binary is not installed yet, the app offers to fetch it on
-        first start.
-      </p>
-      <a class="cta" href="https://github.com/turinglambdaai/syncpilot/releases/latest">Download v0.2.0</a>
-      <a class="cta secondary" href="https://github.com/turinglambdaai/syncpilot#readme">Documentation</a>
-      <p class="assets">
-        Direct: <a href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_amd64.deb">deb (x86_64)</a>
-        · <a href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_arm64.deb">deb (arm64)</a>
-        · <a href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_amd64.AppImage">AppImage (x86_64)</a>
-        · <a href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_aarch64.AppImage">AppImage (aarch64)</a>
-      </p>
+<section>
+  <div class="container">
+    <div class="secure animate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <p><b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon's credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.</p>
+    </div>
+  </div>
+</section>
 
-      <footer>
-        SyncPilot is free software under AGPL-3.0 and is not affiliated with Resilio, Inc.
-        "Resilio Sync" is a trademark of its respective owner.<br />
-        <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a>
-      </footer>
-    </main>
-  </body>
+<section id="download" style="padding-top: 24px;">
+  <div class="container">
+    <div class="section-head animate">
+      <h2>Get SyncPilot</h2>
+      <p>v0.2.0 — install, launch, done. The official rslsync binary is fetched on first start if missing.</p>
+    </div>
+    <div class="dl-cards animate">
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_amd64.deb">
+        <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
+        <div><b>deb</b><span>Debian / Ubuntu · x86_64</span></div>
+      </a>
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_arm64.deb">
+        <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
+        <div><b>deb</b><span>Debian / Ubuntu · arm64</span></div>
+      </a>
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_amd64.AppImage">
+        <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg></div>
+        <div><b>AppImage</b><span>Any distro · x86_64</span></div>
+      </a>
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_aarch64.AppImage">
+        <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg></div>
+        <div><b>AppImage</b><span>Any distro · arm64</span></div>
+      </a>
+    </div>
+    <div class="dl-note animate">rpm packages for both architectures are on the <a href="https://github.com/turinglambdaai/syncpilot/releases/latest" style="color:var(--accent);text-decoration:none;font-weight:500;">release page</a>.</div>
+  </div>
+</section>
+
+<footer>
+  SyncPilot is free software under <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.<br /><br />
+  <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a>
+</footer>
+
+<script>
+const io = new IntersectionObserver((entries) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+}, { threshold: 0.12 });
+document.querySelectorAll('.animate').forEach((el) => io.observe(el));
+</script>
+</body>
 </html>
