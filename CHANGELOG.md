@@ -4,6 +4,13 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-29
+
+### Fixed
+
+- The app now finds an rslsync binary installed at `~/.local/bin` even when the desktop session PATH does not include it (the default on stock GNOME) — previously the first-run download was offered even though the binary from an earlier install was present
+- The first-run rslsync download retries transient CDN failures (3 attempts) and the failure message now names the URL and suggests checking the network or installing manually
+
 ## [0.2.1] - 2026-09-29
 
 ### Fixed

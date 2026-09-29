@@ -94,12 +94,20 @@ impl Manager {
         self.settings.lock().unwrap().webui_port
     }
 
-    /// Find the rslsync binary: explicit setting, well-known paths, then $PATH.
+    /// Find the rslsync binary: explicit setting, our own install location,
+    /// well-known paths, then $PATH.
+    ///
+    /// `~/.local/bin` (where our first-run installer targets) is checked
+    /// explicitly: desktop-launched apps often run with a session PATH that
+    /// does not include it.
     pub fn find_binary(&self) -> Option<PathBuf> {
         let explicit = self.settings.lock().unwrap().rslsync_path.clone();
         let mut candidates: Vec<PathBuf> = Vec::new();
         if !explicit.trim().is_empty() {
             candidates.push(PathBuf::from(explicit.trim()));
+        }
+        if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+            candidates.push(home.join(".local/bin/rslsync"));
         }
         candidates.push(PathBuf::from("/usr/bin/rslsync"));
         candidates.push(PathBuf::from("/usr/local/bin/rslsync"));

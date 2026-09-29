@@ -68,7 +68,7 @@ function renderInstallCard() {
     "SyncPilot runs the official rslsync binary. " +
     "Download it now from Resilio's CDN (checksum verified) into ~/.local/bin, " +
     "or point SyncPilot at an existing binary in Settings.";
-  const install = button("Download Resilio Sync (~25 MB)");
+  const install = button("Download Resilio Sync (~15 MB)");
   const hint = el("div", "card-note", "");
   install.onclick = async () => {
     install.disabled = true;
