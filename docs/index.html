@@ -68,6 +68,15 @@ nav {
 }
 .nav-links a.nav-cta:hover { background: var(--accent-hover); color: #fff; }
 
+/* ---- language dropdown (family standard) ---- */
+.lang-dropdown-wrapper { position: relative; }
+.lang-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; color: var(--text-2); padding: 6px 10px; border-radius: 8px; transition: color .2s, background .2s; }
+.lang-btn:hover { color: var(--accent); background: var(--accent-soft); }
+.lang-menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-s); box-shadow: var(--shadow-hover); padding: 6px; min-width: 132px; margin: 0; list-style: none; opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .18s var(--ease), visibility .18s var(--ease), transform .18s var(--ease); z-index: 10000; }
+.lang-dropdown-wrapper:hover .lang-menu, .lang-dropdown-wrapper:focus-within .lang-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.lang-menu li { padding: 7px 12px; font-size: 14px; color: var(--text); border-radius: 6px; cursor: pointer; transition: background .15s, color .15s; }
+.lang-menu li:hover { background: var(--accent-tint); color: var(--accent); }
+
 /* ---- hero ---- */
 .hero { text-align: center; padding: 88px 0 64px; }
 .eyebrow {
@@ -133,6 +142,7 @@ h2 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -0.022em; margin: 0 0 14
 .card .icon svg { width: 22px; height: 22px; }
 .card h3 { margin: 0 0 7px; font-size: 16.5px; font-weight: 650; letter-spacing: -0.01em; }
 .card p { margin: 0; color: var(--text-2); font-size: 14.5px; line-height: 1.55; }
+.card code { font-family: var(--font-mono); font-size: 0.9em; }
 
 /* ---- how ---- */
 .how { background: var(--bg-card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -194,28 +204,40 @@ footer a:hover { color: var(--text); }
   <div class="nav-wrapper">
     <a class="nav-brand" href="#"><img src="https://raw.githubusercontent.com/turinglambdaai/syncpilot/main/public/icon.png" alt="" />SyncPilot</a>
     <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="https://github.com/turinglambdaai/syncpilot#readme">Docs</a>
+      <a href="#features" data-en="Features" data-zh="功能">Features</a>
+      <a href="https://github.com/turinglambdaai/syncpilot#readme" data-en="Docs" data-zh="文档">Docs</a>
       <a href="https://github.com/turinglambdaai/syncpilot">GitHub</a>
-      <a class="nav-cta" href="#download">Download</a>
+      <div class="lang-dropdown-wrapper">
+        <button class="lang-btn" type="button" onclick="void 0" aria-label="Switch language">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          <span id="current-lang-label">English</span>
+        </button>
+        <ul class="lang-menu">
+          <li onclick="setLanguage('en')">English</li>
+          <li onclick="setLanguage('zh')">简体中文</li>
+        </ul>
+      </div>
+      <a class="nav-cta" href="#download" data-en="Download" data-zh="下载">Download</a>
     </div>
   </div>
 </nav>
 
 <section class="hero">
   <div class="container">
-    <div class="eyebrow animate">Resilio Sync desktop client for Linux</div>
-    <h1 class="animate">The official Resilio Sync experience,<br /><span class="soft">finally on Linux.</span></h1>
-    <p class="hero-sub animate">
+    <div class="eyebrow animate" data-en="Resilio Sync desktop client for Linux" data-zh="Linux 桌面版 Resilio Sync 客户端">Resilio Sync desktop client for Linux</div>
+    <h1 class="animate" data-en='The official Resilio Sync experience,<br /><span class="soft">finally on Linux.</span>' data-zh='原汁原味的 Resilio Sync 体验，<br /><span class="soft">终于登陆 Linux。</span>'>The official Resilio Sync experience,<br /><span class="soft">finally on Linux.</span></h1>
+    <p class="hero-sub animate"
+       data-en='SyncPilot puts the <strong>official Resilio Web UI</strong> inside a native desktop window and manages the official <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> daemon behind it. Every screen is the official one — nothing to re-learn.'
+       data-zh='SyncPilot 把<strong>官方 Resilio Web UI</strong>装进原生桌面窗口，并在背后托管官方 <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> 守护进程。每一屏都是官方界面——无需重新学习。'>
       SyncPilot puts the <strong>official Resilio Web UI</strong> inside a native desktop window and
       manages the official <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> daemon behind it.
       Every screen is the official one — nothing to re-learn.
     </p>
     <div class="hero-actions animate">
-      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest">Download v0.2.1</a>
-      <a class="btn btn-secondary" href="https://github.com/turinglambdaai/syncpilot">View on GitHub</a>
+      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest" data-en="Download v0.2.1" data-zh="下载 v0.2.1">Download v0.2.1</a>
+      <a class="btn btn-secondary" href="https://github.com/turinglambdaai/syncpilot" data-en="View on GitHub" data-zh="在 GitHub 查看">View on GitHub</a>
     </div>
-    <div class="trust-row animate"><b>deb</b> · <b>rpm</b> · <b>AppImage</b> &nbsp;—&nbsp; x86_64 &amp; aarch64 &nbsp;—&nbsp; free, AGPL-3.0</div>
+    <div class="trust-row animate" data-en='<b>deb</b> · <b>rpm</b> · <b>AppImage</b> &nbsp;—&nbsp; x86_64 &amp; aarch64 &nbsp;—&nbsp; free, AGPL-3.0' data-zh='<b>deb</b> · <b>rpm</b> · <b>AppImage</b> &nbsp;—&nbsp; x86_64 与 aarch64 &nbsp;—&nbsp; 免费开源，AGPL-3.0'><b>deb</b> · <b>rpm</b> · <b>AppImage</b> &nbsp;—&nbsp; x86_64 &amp; aarch64 &nbsp;—&nbsp; free, AGPL-3.0</div>
 
     <div class="hero-visual animate">
       <div class="code-window">
@@ -236,39 +258,39 @@ footer a:hover { color: var(--text); }
 <section id="features">
   <div class="container">
     <div class="section-head animate">
-      <h2>Official where it matters,<br />native where it counts.</h2>
-      <p>Folders, peers, transfers, preferences, activation — all of it is the official Resilio interface, version-matched to your rslsync build. SyncPilot adds everything the official Linux story was missing.</p>
+      <h2 data-en='Official where it matters,<br />native where it counts.' data-zh='关键处用官方，<br />该原生处就原生。'>Official where it matters,<br />native where it counts.</h2>
+      <p data-en="Folders, peers, transfers, preferences, activation — all of it is the official Resilio interface, version-matched to your rslsync build. SyncPilot adds everything the official Linux story was missing." data-zh="文件夹、伙伴、传输、偏好设置、激活——全部是官方 Resilio 界面，版本与你的 rslsync 构建一致。SyncPilot 补齐了官方在 Linux 上缺失的一切。">Folders, peers, transfers, preferences, activation — all of it is the official Resilio interface, version-matched to your rslsync build. SyncPilot adds everything the official Linux story was missing.</p>
     </div>
     <div class="grid">
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 17V9l6 8V9"/></svg></div>
-        <h3>Zero interface drift</h3>
-        <p>The window embeds the official Resilio Web UI itself — same screens, same workflow as the Windows and macOS clients, nothing re-implemented to fall behind.</p>
+        <h3 data-en="Zero interface drift" data-zh="零界面偏差">Zero interface drift</h3>
+        <p data-en="The window embeds the official Resilio Web UI itself — same screens, same workflow as the Windows and macOS clients, nothing re-implemented to fall behind." data-zh="窗口内嵌的就是官方 Resilio Web UI——与 Windows、macOS 客户端相同的界面与工作流，没有任何会落后的二次实现。">The window embeds the official Resilio Web UI itself — same screens, same workflow as the Windows and macOS clients, nothing re-implemented to fall behind.</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg></div>
-        <h3>Daemon lifecycle</h3>
-        <p>One-click start and stop, adopts an already-running daemon, and a crash watchdog restarts it with exponential backoff. Optionally keeps running after the app exits.</p>
+        <h3 data-en="Daemon lifecycle" data-zh="守护进程全生命周期">Daemon lifecycle</h3>
+        <p data-en="One-click start and stop, adopts an already-running daemon, and a crash watchdog restarts it with exponential backoff. Optionally keeps running after the app exits." data-zh="一键启停，可接管已在运行的守护进程；崩溃看门狗按指数退避自动重启。还可选在应用退出后继续保活。">One-click start and stop, adopts an already-running daemon, and a crash watchdog restarts it with exponential backoff. Optionally keeps running after the app exits.</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
-        <h3>First-run setup</h3>
-        <p>No rslsync on the machine? SyncPilot offers to download the official binary straight from Resilio's CDN, sha256-verified, into <code>~/.local/bin</code>.</p>
+        <h3 data-en="First-run setup" data-zh="首次运行即配置">First-run setup</h3>
+        <p data-en='No rslsync on the machine? SyncPilot offers to download the official binary straight from Resilio&apos;s CDN, sha256-verified, into <code>~/.local/bin</code>.' data-zh='机器上没有 rslsync？SyncPilot 会提示从 Resilio 官方 CDN 下载官方二进制，经 sha256 校验后装入 <code>~/.local/bin</code>。'>No rslsync on the machine? SyncPilot offers to download the official binary straight from Resilio's CDN, sha256-verified, into <code>~/.local/bin</code>.</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/><path d="m9 12 2 2 4-4"/></svg></div>
-        <h3>In-app updates</h3>
-        <p>Every release ships signed updater artifacts. SyncPilot checks the GitHub release and updates itself — no manual re-downloads.</p>
+        <h3 data-en="In-app updates" data-zh="应用内更新">In-app updates</h3>
+        <p data-en="Every release ships signed updater artifacts. SyncPilot checks the GitHub release and updates itself — no manual re-downloads." data-zh="每个版本都带签名的更新工件。SyncPilot 检查 GitHub release 并自我更新——无需手动重新下载。">Every release ships signed updater artifacts. SyncPilot checks the GitHub release and updates itself — no manual re-downloads.</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 3l-4 4-4-4"/></svg></div>
-        <h3>Desktop integration</h3>
-        <p>Tray icon with quick actions, hide-to-tray on close, launch at login via XDG autostart, and a standalone native settings window.</p>
+        <h3 data-en="Desktop integration" data-zh="桌面集成">Desktop integration</h3>
+        <p data-en="Tray icon with quick actions, hide-to-tray on close, launch at login via XDG autostart, and a standalone native settings window." data-zh="托盘图标与快捷操作，关闭即最小化到托盘，XDG autostart 开机自启，还有独立的原生设置窗口。">Tray icon with quick actions, hide-to-tray on close, launch at login via XDG autostart, and a standalone native settings window.</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg></div>
-        <h3>Safe by construction</h3>
-        <p>The Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy — no login prompts, and the daemon never serves an unauthenticated request.</p>
+        <h3 data-en="Safe by construction" data-zh="构造即安全">Safe by construction</h3>
+        <p data-en='The Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy — no login prompts, and the daemon never serves an unauthenticated request.' data-zh='Web UI 仅留在 <code>127.0.0.1</code>，经注入认证的环回代理访问——不会弹登录框，守护进程绝不响应未认证请求。'>The Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy — no login prompts, and the daemon never serves an unauthenticated request.</p>
       </div>
     </div>
   </div>
@@ -277,26 +299,26 @@ footer a:hover { color: var(--text); }
 <section class="how">
   <div class="container">
     <div class="section-head animate">
-      <h2>Up and running in three steps</h2>
-      <p>Same feel as installing the official client on any other platform.</p>
+      <h2 data-en="Up and running in three steps" data-zh="三步上手">Up and running in three steps</h2>
+      <p data-en="Same feel as installing the official client on any other platform." data-zh="与在其他平台安装官方客户端的体验一致。">Same feel as installing the official client on any other platform.</p>
     </div>
     <div class="steps animate">
       <div class="step">
         <div class="step-num">1</div>
-        <h3>Install</h3>
-        <p>Grab the deb, rpm or AppImage for your architecture from the release page.</p>
+        <h3 data-en="Install" data-zh="安装">Install</h3>
+        <p data-en="Grab the deb, rpm or AppImage for your architecture from the release page." data-zh="从 release 页面获取适合你架构的 deb、rpm 或 AppImage。">Grab the deb, rpm or AppImage for your architecture from the release page.</p>
       </div>
       <div class="step-arrow">→</div>
       <div class="step">
         <div class="step-num">2</div>
-        <h3>Launch</h3>
-        <p>SyncPilot starts the official daemon and hands the window to the official interface. No rslsync yet? One click fetches it.</p>
+        <h3 data-en="Launch" data-zh="启动">Launch</h3>
+        <p data-en="SyncPilot starts the official daemon and hands the window to the official interface. No rslsync yet? One click fetches it." data-zh="SyncPilot 启动官方守护进程，并把窗口交给官方界面。还没有 rslsync？一键获取。">SyncPilot starts the official daemon and hands the window to the official interface. No rslsync yet? One click fetches it.</p>
       </div>
       <div class="step-arrow">→</div>
       <div class="step">
         <div class="step-num">3</div>
-        <h3>Sync</h3>
-        <p>Activate and add folders through the official wizard — exactly like on Windows and macOS.</p>
+        <h3 data-en="Sync" data-zh="同步">Sync</h3>
+        <p data-en="Activate and add folders through the official wizard — exactly like on Windows and macOS." data-zh="通过官方向导完成激活并添加文件夹——与 Windows、macOS 上完全一致。">Activate and add folders through the official wizard — exactly like on Windows and macOS.</p>
       </div>
     </div>
   </div>
@@ -306,7 +328,7 @@ footer a:hover { color: var(--text); }
   <div class="container">
     <div class="secure animate">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <p><b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon's credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.</p>
+      <p data-en='<b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon&apos;s credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.' data-zh='<b>你的密钥与文件永不出机。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。所有 P2P 流量均由官方二进制处理。'><b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon's credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.</p>
     </div>
   </div>
 </section>
@@ -314,41 +336,93 @@ footer a:hover { color: var(--text); }
 <section id="download" style="padding-top: 24px;">
   <div class="container">
     <div class="section-head animate">
-      <h2>Get SyncPilot</h2>
-      <p>v0.2.1 — install, launch, done. The official rslsync binary is fetched on first start if missing.</p>
+      <h2 data-en="Get SyncPilot" data-zh="获取 SyncPilot">Get SyncPilot</h2>
+      <p data-en="v0.2.1 — install, launch, done. The official rslsync binary is fetched on first start if missing." data-zh="v0.2.1——安装、启动、完成。缺失官方 rslsync 二进制时，会在首次启动时自动获取。">v0.2.1 — install, launch, done. The official rslsync binary is fetched on first start if missing.</p>
     </div>
     <div class="dl-cards animate">
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.1/SyncPilot_0.2.0_amd64.deb">
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.1/SyncPilot_0.2.1_amd64.deb">
         <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
         <div><b>deb</b><span>Debian / Ubuntu · x86_64</span></div>
       </a>
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.1/SyncPilot_0.2.0_arm64.deb">
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.1/SyncPilot_0.2.1_arm64.deb">
         <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
         <div><b>deb</b><span>Debian / Ubuntu · arm64</span></div>
       </a>
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.1/SyncPilot_0.2.0_amd64.AppImage">
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.1/SyncPilot_0.2.1_amd64.AppImage">
         <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg></div>
         <div><b>AppImage</b><span>Any distro · x86_64</span></div>
       </a>
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.1/SyncPilot_0.2.0_aarch64.AppImage">
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.1/SyncPilot_0.2.1_aarch64.AppImage">
         <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg></div>
         <div><b>AppImage</b><span>Any distro · arm64</span></div>
       </a>
     </div>
-    <div class="dl-note animate">rpm packages for both architectures are on the <a href="https://github.com/turinglambdaai/syncpilot/releases/latest" style="color:var(--accent);text-decoration:none;font-weight:500;">release page</a>.</div>
+    <div class="dl-note animate" data-en='rpm packages for both architectures are on the <a href="https://github.com/turinglambdaai/syncpilot/releases/latest" style="color:var(--accent);text-decoration:none;font-weight:500;">release page</a>.' data-zh='两种架构的 rpm 包都在<a href="https://github.com/turinglambdaai/syncpilot/releases/latest" style="color:var(--accent);text-decoration:none;font-weight:500;">release 页面</a>。'>rpm packages for both architectures are on the <a href="https://github.com/turinglambdaai/syncpilot/releases/latest" style="color:var(--accent);text-decoration:none;font-weight:500;">release page</a>.</div>
   </div>
 </section>
 
-<footer>
-  SyncPilot is free software under <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.<br /><br />
-  <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a>
-</footer>
+<footer><span data-en='SyncPilot is free software under <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.<br /><br />
+  <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a>' data-zh='SyncPilot 为 <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> 自由软件，与 Resilio, Inc. 无隶属关系。「Resilio Sync」为其所有者的商标。<br /><br />
+  <a href="https://github.com/turinglambdaai/syncpilot">GitHub 查看源码</a>'>SyncPilot is free software under <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.<br /><br />
+  <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a></span></footer>
 
 <script>
 const io = new IntersectionObserver((entries) => {
   for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
 }, { threshold: 0.12 });
 document.querySelectorAll('.animate').forEach((el) => io.observe(el));
+
+// Language policy (family standard): explicit choice wins and persists;
+// otherwise follow the browser locale on every visit; fall back to English
+// here because the primary audience tracks the upstream English docs.
+const LANG_OVERRIDE_KEY = 'syncpilot-lang-override-v2';
+const LEGACY_LANGUAGE_KEY = 'syncpilot-lang';
+const pageMetadata = {
+  en: {
+    title: 'SyncPilot — the official Resilio Sync experience on Linux',
+    description: 'Native Linux desktop shell for Resilio Sync: the official Web UI in a real desktop window, with tray, autostart, daemon watchdog and in-app updates. Free, AGPL-3.0.'
+  },
+  zh: {
+    title: 'SyncPilot — Linux 上的官方 Resilio Sync 体验',
+    description: 'Resilio Sync 的原生 Linux 桌面外壳：官方 Web UI 装进真正的桌面窗口，带托盘、开机自启、守护进程看护与应用内更新。免费开源，AGPL-3.0。'
+  }
+};
+
+function readLanguageOverride() {
+  try { const v = localStorage.getItem(LANG_OVERRIDE_KEY); return v === 'zh' || v === 'en' ? v : null; } catch (e) { return null; }
+}
+function detectBrowserLanguage() {
+  const locale = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+  if (!locale) return 'en';
+  return String(locale).toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
+}
+function applyLanguage(lang, persist) {
+  if (persist) { try { localStorage.setItem(LANG_OVERRIDE_KEY, lang); } catch (e) { /* private mode */ } }
+  document.querySelectorAll('[data-en],[data-zh]').forEach((el) => {
+    const text = el.getAttribute('data-' + lang);
+    if (text === null) return;
+    const hasElementChildren = Array.from(el.children).some((c) => c.nodeType === 1);
+    if (hasElementChildren && /<\w/.test(text)) el.innerHTML = text; else el.textContent = text;
+  });
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  const label = document.getElementById('current-lang-label');
+  if (label) label.textContent = lang === 'zh' ? '简体中文' : 'English';
+  const meta = pageMetadata[lang];
+  if (meta) {
+    document.title = meta.title;
+    const description = document.querySelector('meta[name="description"]');
+    if (description) description.setAttribute('content', meta.description);
+  }
+}
+window.setLanguage = function (lang) {
+  if (lang !== 'zh' && lang !== 'en') return;
+  applyLanguage(lang, true);
+};
+try { localStorage.removeItem(LEGACY_LANGUAGE_KEY); } catch (e) { /* private mode */ }
+applyLanguage(readLanguageOverride() || detectBrowserLanguage(), false);
+window.addEventListener('languagechange', () => {
+  if (!readLanguageOverride()) applyLanguage(detectBrowserLanguage(), false);
+});
 </script>
 </body>
 </html>
