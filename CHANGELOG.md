@@ -4,10 +4,16 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-29
+
 ### Fixed
 
 - A foreign daemon holding SyncPilot's port is no longer adopted: port probing now distinguishes compatible / foreign / absent, and a credentials mismatch (e.g. a leftover systemd service) surfaces as an actionable error on the boot page instead of a silently unusable session
 - The boot page shows the actual failure reason and retries only on click, so real errors can no longer loop behind an auto-retry
+
+### Added
+
+- The settings window now checks the release feed for updates (manual button plus an automatic check on open); AppImage builds install the update in place and restart, deb/rpm installs are pointed at the release page — this closes the loop on the updater infrastructure shipped in 0.2.0
 
 - Generated `rslsync.conf` now sets `"agree_to_EULA": "yes"` — rslsync 3.x exits immediately without it, so app-spawned daemons never started on 3.1.2
 - The conf no longer writes an `api_key`: rslsync 3.x validates keys against Resilio-issued signed keys and refuses to start on a locally generated one

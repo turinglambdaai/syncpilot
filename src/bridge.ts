@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 
 export interface DaemonStatus {
   phase: "stopped" | "starting" | "running" | "crashed" | "failed";
@@ -37,6 +37,12 @@ export interface SettingsUpdate {
   close_to_tray?: boolean;
 }
 
+export interface UpdateInfo {
+  version: string;
+  notes?: string | null;
+  appimage: boolean;
+}
+
 export const api = {
   daemonStatus: () => invoke<DaemonStatus>("daemon_status"),
   daemonStart: () => invoke<DaemonStatus>("daemon_start"),
@@ -53,4 +59,7 @@ export const api = {
   pickFolder: () => invoke<string | null>("pick_folder"),
   getVersion: () => invoke<string>("get_app_version"),
   openPath: (path: string) => openPath(path),
+  openUrl: (url: string) => openUrl(url),
+  checkForUpdates: () => invoke<UpdateInfo | null>("check_for_updates"),
+  installUpdate: () => invoke<void>("install_update"),
 };

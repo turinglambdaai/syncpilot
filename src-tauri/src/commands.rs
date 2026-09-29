@@ -4,6 +4,7 @@
 use crate::manager::{DaemonStatus, Manager};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager as _};
+use tauri_plugin_updater::UpdaterExt;
 
 type CmdResult<T> = Result<T, String>;
 
@@ -156,4 +157,54 @@ pub async fn pick_folder(app: AppHandle) -> CmdResult<Option<String>> {
     Ok(picked
         .and_then(|f| f.into_path().ok())
         .map(|p| p.to_string_lossy().into_owned()))
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub notes: Option<String>,
+    /// True for the AppImage build — the only Linux packaging the updater
+    /// can replace in place; deb/rpm installs update via the package.
+    pub appimage: bool,
+}
+
+/// Ask the release feed whether a newer version exists. `None` = up to date.
+#[tauri::command]
+pub async fn check_for_updates(app: AppHandle) -> CmdResult<Option<UpdateInfo>> {
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(update.map(|u| UpdateInfo {
+        version: u.version,
+        notes: u.body,
+        appimage: std::env::var_os("APPIMAGE").is_some(),
+    }))
+}
+
+/// Download and install the pending update, then restart the app.
+/// Linux: in-place install works for the AppImage build only.
+#[tauri::command]
+pub async fn install_update(app: AppHandle) -> CmdResult<()> {
+    if std::env::var_os("APPIMAGE").is_none() {
+        return Err(
+            "In-app install requires the AppImage build — update the deb/rpm package instead."
+                .into(),
+        );
+    }
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "no update available".to_string())?;
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|e| e.to_string())?;
+    app.restart();
+    #[allow(unreachable_code)]
+    Ok(())
 }

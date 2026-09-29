@@ -134,6 +134,51 @@ async function renderSettings(root: HTMLElement) {
     ),
   );
 
+  // ---- updates ----
+  const g4 = el("div", "card settings-card");
+  g4.append(el("div", "card-title", "Updates"));
+  const updateRow = el("div", "field-row");
+  const checkBtn = el("button", "btn ghost", "Check for updates") as HTMLButtonElement;
+  updateRow.append(checkBtn);
+  g4.append(updateRow);
+  const updateNote = el("div", "card-note", "Checking…");
+  g4.append(updateNote);
+  const applyUpdate = async () => {
+    checkBtn.disabled = true;
+    updateNote.textContent = "Checking…";
+    try {
+      const info = await api.checkForUpdates();
+      if (!info) {
+        updateNote.textContent = `You are up to date (v${version}).`;
+        return;
+      }
+      updateNote.textContent = `SyncPilot ${info.version} is available.`;
+      const act = el("button", "btn primary", info.appimage ? "Download & restart" : "Open release page") as HTMLButtonElement;
+      act.onclick = async () => {
+        act.disabled = true;
+        if (info.appimage) {
+          updateNote.textContent = "Downloading update…";
+          try {
+            await api.installUpdate(); // restarts the app on success
+          } catch (e) {
+            act.disabled = false;
+            updateNote.textContent = String(e);
+          }
+        } else {
+          await api.openUrl("https://github.com/turinglambdaai/syncpilot/releases/latest");
+          act.disabled = false;
+        }
+      };
+      updateRow.append(act);
+    } catch (e) {
+      updateNote.textContent = `Update check failed: ${e}`;
+    } finally {
+      checkBtn.disabled = false;
+    }
+  };
+  checkBtn.onclick = () => void applyUpdate();
+  void applyUpdate();
+
   // ---- about ----
   const g5 = el("div", "card settings-card");
   g5.append(el("div", "card-title", "About"));
@@ -164,7 +209,7 @@ async function renderSettings(root: HTMLElement) {
     }
   };
 
-  wrap.append(g1, g2, g3, g5, save, err);
+  wrap.append(g1, g2, g3, g4, g5, save, err);
   root.append(wrap);
 }
 
