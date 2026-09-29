@@ -21,8 +21,10 @@ import json
 import sys
 from pathlib import Path
 
-# AppImage updater platform keys (Tauri v2 static manifest).
+# AppImage updater platform keys (Tauri v2 static manifest). The bundler
+# names AppImages with deb-style arch suffixes: x86_64 target -> amd64.
 PLATFORMS = {
+    "amd64": "linux-x86_64",
     "x64": "linux-x86_64",
     "aarch64": "linux-aarch64",
 }
@@ -37,15 +39,13 @@ def main() -> int:
 
     platforms = {}
     for suffix, key in PLATFORMS.items():
+        if key in platforms:
+            continue  # alternate spelling of an arch already found
         appimage = sorted(artifact_dir.glob(f"SyncPilot_*_{suffix}.AppImage"))
         if not appimage:
-            print(f"warn: no AppImage for {suffix}", file=sys.stderr)
             continue
         appimage = appimage[-1]
-        sigs = sorted(
-            artifact_dir.glob(f"{appimage.name}.sig")
-            or artifact_dir.glob(f"SyncPilot_*_{suffix}.AppImage.sig")
-        )
+        sigs = sorted(artifact_dir.glob(f"{appimage.name}.sig"))
         if not sigs:
             print(f"error: no .sig for {appimage.name}", file=sys.stderr)
             return 1
