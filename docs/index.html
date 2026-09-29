@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SyncPilot — Resilio Sync GUI for Linux</title>
+    <title>SyncPilot — the official Resilio Sync experience on Linux</title>
     <meta
       name="description"
-      content="Native desktop GUI for Resilio Sync (rslsync) on Linux: folders, peers, transfers and tray integration. Free, AGPL-3.0."
+      content="Native Linux desktop shell for Resilio Sync: the official Web UI in a real desktop window, with tray, autostart, daemon watchdog and in-app updates. Free, AGPL-3.0."
     />
     <style>
       :root {
@@ -47,6 +47,14 @@
         text-decoration: none;
         font-weight: 600;
       }
+      .cta.secondary {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        margin-left: 10px;
+      }
+      .assets { font-size: 14px; color: var(--muted); margin-top: 14px; }
+      .assets a { color: var(--accent); text-decoration: none; }
       footer {
         margin-top: 64px;
         border-top: 1px solid var(--line);
@@ -63,6 +71,16 @@
         color: var(--muted);
         font-size: 14px;
       }
+      .pill {
+        display: inline-block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        background: #e7eefc;
+        border-radius: 999px;
+        padding: 3px 12px;
+        margin-bottom: 10px;
+      }
     </style>
   </head>
   <body>
@@ -71,40 +89,53 @@
         <img src="https://raw.githubusercontent.com/turinglambdaai/syncpilot/main/public/icon.png" alt="SyncPilot icon" />
         <div>
           <h1>SyncPilot</h1>
-          <p class="tagline">The Resilio Sync desktop client Linux deserves.</p>
+          <p class="tagline">The official Resilio Sync experience, on Linux.</p>
         </div>
       </div>
 
+      <span class="pill">v0.2.0 · deb · rpm · AppImage · x86_64 + aarch64</span>
+
       <p>
-        Resilio Sync ships official GUI clients for Windows and macOS — on Linux you only get a
-        Web UI. <strong>SyncPilot</strong> wraps the official <code>rslsync</code> binary in a
-        native desktop app: folders, peers, transfers, pause/resume, speed limits and a tray
-        icon, talking to the daemon over loopback only.
+        Resilio Sync ships official desktop clients for Windows and macOS — on Linux you only
+        get a Web UI. <strong>SyncPilot</strong> puts the <strong>official Resilio Web UI</strong>
+        inside a native desktop window and manages the official <code>rslsync</code> daemon
+        behind it: every screen, control and workflow is the official one — folders, peers,
+        transfers, preferences, activation — with the desktop integration Linux was missing
+        on top.
       </p>
 
       <div class="shot">
-        Screenshot placeholder — overview page with transfer-rate graph and folder grid.
+        Screenshot placeholder — the official Resilio Web UI running inside SyncPilot.
       </div>
 
       <h2>Highlights</h2>
       <ul>
-        <li>One-click daemon lifecycle with crash watchdog and already-running adoption</li>
-        <li>Add folders by share key or create new ones with read &amp; write / read-only keys</li>
-        <li>Peer connection state, sync progress and per-peer speeds</li>
-        <li>Global pause/resume, up/down speed limits, live rate graph</li>
-        <li>Tray icon, hide-to-tray, launch at login</li>
-        <li>Web UI forced to <code>127.0.0.1</code> with app-generated credentials</li>
+        <li><strong>Official interface, zero drift</strong> — nothing to re-learn, version-matched to your rslsync build; activation and identity setup run through the official wizard</li>
+        <li><strong>Daemon lifecycle</strong> — one-click start/stop, adopts an already-running daemon, crash watchdog with exponential backoff</li>
+        <li><strong>First-run setup</strong> — offers to download the official rslsync binary from Resilio's CDN (sha256-verified) if none is found</li>
+        <li><strong>In-app updates</strong> — signed updater artifacts checked against the GitHub release</li>
+        <li><strong>Desktop integration</strong> — tray icon, hide-to-tray, launch at login, standalone settings window</li>
+        <li><strong>Safe by construction</strong> — the Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy; the daemon never serves an unauthenticated request</li>
       </ul>
 
       <h2>Get it</h2>
       <p>
-        deb / rpm / AppImage for x86_64 and aarch64 from GitHub Releases. Requires the official
-        <code>rslsync</code> binary on the system.
+        Install the package, launch SyncPilot, done — if the official
+        <code>rslsync</code> binary is not installed yet, the app offers to fetch it on
+        first start.
       </p>
-      <a class="cta" href="https://github.com/turinglambdaai/syncpilot/releases">Download</a>
+      <a class="cta" href="https://github.com/turinglambdaai/syncpilot/releases/latest">Download v0.2.0</a>
+      <a class="cta secondary" href="https://github.com/turinglambdaai/syncpilot#readme">Documentation</a>
+      <p class="assets">
+        Direct: <a href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_amd64.deb">deb (x86_64)</a>
+        · <a href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_arm64.deb">deb (arm64)</a>
+        · <a href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_amd64.AppImage">AppImage (x86_64)</a>
+        · <a href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.0/SyncPilot_0.2.0_aarch64.AppImage">AppImage (aarch64)</a>
+      </p>
 
       <footer>
         SyncPilot is free software under AGPL-3.0 and is not affiliated with Resilio, Inc.
+        "Resilio Sync" is a trademark of its respective owner.<br />
         <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a>
       </footer>
     </main>
