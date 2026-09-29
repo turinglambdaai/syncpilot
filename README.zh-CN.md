@@ -7,6 +7,10 @@
 [English](README.md) · **中文** · [主页](https://syncpilot.jrtx.site/)
 
 SyncPilot 在原生窗口内运行并管理官方 `rslsync` 守护进程，窗口里显示的就是官方 Resilio Web UI。它仅通过环回地址与守护进程通信——密钥与文件永不离开你的机器。
+<p align="center">
+  <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
+</p>
+
 
 ## 功能
 

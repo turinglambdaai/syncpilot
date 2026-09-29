@@ -7,6 +7,10 @@ A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) 
 **English** · [中文](README.zh-CN.md) · [Homepage](https://syncpilot.jrtx.site/)
 
 SyncPilot runs and manages the official `rslsync` daemon behind a native window that shows the official Resilio Web UI. It talks to the daemon over loopback only — your keys and files never leave your machine.
+<p align="center">
+  <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
+</p>
+
 
 ## Features
 
