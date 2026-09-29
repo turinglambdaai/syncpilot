@@ -2,9 +2,9 @@
 
 A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) (`rslsync`) on Linux — it embeds the **official Resilio Web UI** in a desktop window, so the interface and workflow are exactly the official Windows/macOS client experience, with everything Linux was missing on top: daemon lifecycle, tray, autostart, crash watchdog and in-app updates.
 
-[![homepage](https://img.shields.io/badge/homepage-jrtx.site%2Fsyncpilot-2563eb)](https://jrtx.site/syncpilot/) [![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Tauri%202-orange)
+[![homepage](https://img.shields.io/badge/homepage-syncpilot.jrtx.site-2563eb)](https://syncpilot.jrtx.site/) [![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Tauri%202-orange)
 
-**English** · [中文](README.zh-CN.md) · [Homepage](https://jrtx.site/syncpilot/)
+**English** · [中文](README.zh-CN.md) · [Homepage](https://syncpilot.jrtx.site/)
 
 SyncPilot runs and manages the official `rslsync` daemon behind a native window that shows the official Resilio Web UI. It talks to the daemon over loopback only — your keys and files never leave your machine.
 
