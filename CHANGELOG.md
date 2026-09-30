@@ -4,6 +4,12 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-30
+
+### Fixed
+
+- The settings window's content column hugged the left edge with a dead strip on the right: it reuses the main window's left-flushed `.view.narrow` layout, where it sits beside the sidebar. The sidebar-less settings window now centers the column
+
 ## [0.3.1] - 2026-09-30
 
 ### Fixed

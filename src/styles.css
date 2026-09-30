@@ -805,6 +805,11 @@ body {
 .settings-page {
   background: var(--bg);
 }
+/* The narrow column is left-flushed for the main window (it sits beside
+   the sidebar); the settings window has no sidebar, so center it. */
+.settings-page .view {
+  margin: 0 auto;
+}
 /* The settings window has no #view wrapper: html/body are overflow:hidden
    (that belongs to the main window layout), so this container must own the
    scrolling or everything past ~640px — the Updates card, About and the
