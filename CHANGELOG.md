@@ -4,6 +4,14 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-30
+
+### Changed
+
+- **Closing the window now hides SyncPilot to the tray instead of quitting, and quitting no longer stops the sync daemon** — matching the official Windows/macOS clients: the window leaves the taskbar while syncing continues, and the tray menu (Open / Settings / Quit) is the explicit way out. Both behaviors remain toggleable in SyncPilot Settings ("Hide to tray on close", "Keep the daemon running after the app exits")
+- Settings written by 0.2.x migrate once on first launch after the upgrade to pick up the new defaults; choices made after that migration are never rewritten
+- Relaunching SyncPilot while its window is hidden now restores the running instance instead of starting a second one — on GNOME sessions without the AppIndicator extension, where the tray icon cannot appear, the desktop launcher is still a way back to the window
+
 ## [0.2.2] - 2026-09-29
 
 ### Fixed

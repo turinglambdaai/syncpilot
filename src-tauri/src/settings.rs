@@ -25,6 +25,23 @@ pub struct AppSettings {
     pub keep_daemon_on_exit: bool,
     /// Hide the window to the tray on close instead of quitting.
     pub close_to_tray: bool,
+    /// Schema version of the persisted file; drives one-time migrations.
+    /// Field-level default, not the container one: a file without the
+    /// stamp predates versioning and must enter `migrate`, whereas the
+    /// container default would fill the current version and skip it.
+    #[serde(default = "legacy_settings_version")]
+    pub settings_version: u32,
+}
+
+/// Bump when `Default` changes in a way existing installs should pick up.
+/// `load` migrates older files exactly once and stamps this value, so a
+/// user's explicit edits at the current version are never rewritten.
+const SETTINGS_VERSION: u32 = 2;
+
+/// Version assumed for files that predate the version stamp (everything
+/// up to and including 0.2.x).
+fn legacy_settings_version() -> u32 {
+    1
 }
 
 impl Default for AppSettings {
@@ -37,8 +54,13 @@ impl Default for AppSettings {
             device_name: device_name(),
             autostart_daemon: true,
             restart_on_crash: true,
-            keep_daemon_on_exit: false,
-            close_to_tray: false,
+            // Sync clients are expected to keep working with their window
+            // closed: the official Windows/macOS clients hide to the tray
+            // and the daemon syncs regardless of any UI. Quit stays
+            // explicit, via the tray menu.
+            keep_daemon_on_exit: true,
+            close_to_tray: true,
+            settings_version: SETTINGS_VERSION,
         }
     }
 }
@@ -59,7 +81,13 @@ impl AppSettings {
         let path = settings_path(dir);
         match fs::read_to_string(&path) {
             Ok(raw) => match serde_json::from_str::<AppSettings>(&raw) {
-                Ok(s) => s,
+                Ok(mut s) => {
+                    if s.settings_version < SETTINGS_VERSION {
+                        s.migrate();
+                        s.persist(dir);
+                    }
+                    s
+                }
                 Err(_) => {
                     let _ = fs::rename(&path, path.with_extension("json.bak"));
                     let fresh = Self::default();
@@ -73,6 +101,19 @@ impl AppSettings {
                 fresh
             }
         }
+    }
+
+    /// Bring a settings file written by an older version up to date. Runs
+    /// at most once per version bump: `load` stamps the current version
+    /// right after, so choices the user makes afterwards always win.
+    fn migrate(&mut self) {
+        // v1 shipped both flags as false; adopt the tray-first behavior
+        // wholesale rather than leaving upgraded installs looking unchanged.
+        if self.settings_version < 2 {
+            self.close_to_tray = true;
+            self.keep_daemon_on_exit = true;
+        }
+        self.settings_version = SETTINGS_VERSION;
     }
 
     pub fn persist(&self, dir: &Path) -> &Self {
@@ -186,6 +227,41 @@ mod tests {
         let s = AppSettings::load(&dir);
         assert_eq!(s.webui_port, 39999);
         assert_eq!(s.webui_login, "syncpilot");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn v1_file_migrates_to_tray_defaults_once() {
+        let dir = temp_dir("migrate");
+        // A pre-0.3.0 file: explicit false values, no version stamp.
+        fs::write(
+            settings_path(&dir),
+            r#"{"close_to_tray": false, "keep_daemon_on_exit": false}"#,
+        )
+        .unwrap();
+        let s = AppSettings::load(&dir);
+        assert!(s.close_to_tray, "v1 installs must pick up hide-to-tray");
+        assert!(s.keep_daemon_on_exit, "v1 installs must keep the daemon");
+        assert_eq!(s.settings_version, SETTINGS_VERSION);
+        let stored = fs::read_to_string(settings_path(&dir)).unwrap();
+        assert!(
+            stored.contains("\"settings_version\": 2"),
+            "migration must be stamped to disk, got {stored}"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn current_version_never_rewrites_explicit_false() {
+        let dir = temp_dir("explicit");
+        fs::write(
+            settings_path(&dir),
+            r#"{"settings_version": 2, "close_to_tray": false, "keep_daemon_on_exit": false}"#,
+        )
+        .unwrap();
+        let s = AppSettings::load(&dir);
+        assert!(!s.close_to_tray, "explicit opt-out must survive load");
+        assert!(!s.keep_daemon_on_exit);
         let _ = fs::remove_dir_all(&dir);
     }
 }
