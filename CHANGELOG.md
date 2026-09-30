@@ -4,6 +4,13 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-30
+
+### Added
+
+- **In-app updates for deb installs**: when a new version is on the release feed, the Updates card now offers "Download & install…" — the deb is downloaded and verified against the release's published sha256 checksums, then installed via `pkexec dpkg -i`, so the desktop's polkit dialog collects the administrator password once and the app restarts into the new version. Dismissing the dialog or a checksum mismatch installs nothing. AppImage keeps its in-place updater; rpm keeps the release-page fallback
+- The download path is exercised against a real release by an ignored network test (`cargo test -- --ignored`)
+
 ## [0.3.2] - 2026-09-30
 
 ### Fixed

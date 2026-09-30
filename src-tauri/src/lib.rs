@@ -13,6 +13,7 @@ mod manager;
 mod proxy;
 mod rslsync_config;
 mod rslsync_install;
+mod selfupdate;
 mod settings;
 
 use manager::{Manager, Phase};

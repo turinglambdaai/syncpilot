@@ -41,6 +41,7 @@ export interface UpdateInfo {
   version: string;
   notes?: string | null;
   appimage: boolean;
+  deb: boolean;
 }
 
 export const api = {

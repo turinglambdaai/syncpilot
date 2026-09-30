@@ -163,9 +163,13 @@ pub async fn pick_folder(app: AppHandle) -> CmdResult<Option<String>> {
 pub struct UpdateInfo {
     pub version: String,
     pub notes: Option<String>,
-    /// True for the AppImage build — the only Linux packaging the updater
-    /// can replace in place; deb/rpm installs update via the package.
+    /// True for the AppImage build — the packaging the updater plugin can
+    /// replace in place.
     pub appimage: bool,
+    /// True when this deb install can upgrade in place: the download is
+    /// verified against the release checksums and handed to `pkexec dpkg
+    /// -i`, so the desktop's polkit agent collects the authorization.
+    pub deb: bool,
 }
 
 /// Ask the release feed whether a newer version exists. `None` = up to date.
@@ -181,30 +185,56 @@ pub async fn check_for_updates(app: AppHandle) -> CmdResult<Option<UpdateInfo>> 
         version: u.version,
         notes: u.body,
         appimage: std::env::var_os("APPIMAGE").is_some(),
+        deb: crate::selfupdate::inplace_supported(),
     }))
 }
 
 /// Download and install the pending update, then restart the app.
-/// Linux: in-place install works for the AppImage build only.
+/// AppImage: the updater plugin's in-place install. deb: download +
+/// checksum-verify + `pkexec dpkg -i` (polkit dialog). rpm: not supported
+/// in place — the frontend falls back to the release page.
 #[tauri::command]
 pub async fn install_update(app: AppHandle) -> CmdResult<()> {
-    if std::env::var_os("APPIMAGE").is_none() {
-        return Err(
-            "In-app install requires the AppImage build — update the deb/rpm package instead."
-                .into(),
-        );
-    }
-    let updater = app.updater().map_err(|e| e.to_string())?;
-    let update = updater
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
         .check()
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "no update available".to_string())?;
-    update
-        .download_and_install(|_, _| {}, || {})
-        .await
-        .map_err(|e| e.to_string())?;
-    app.restart();
-    #[allow(unreachable_code)]
-    Ok(())
+
+    if std::env::var_os("APPIMAGE").is_some() {
+        update
+            .download_and_install(|_, _| {}, || {})
+            .await
+            .map_err(|e| e.to_string())?;
+        app.restart();
+        #[allow(unreachable_code)]
+        return Ok(());
+    }
+
+    if crate::selfupdate::inplace_supported() {
+        let version = update.version.clone();
+        let dest_dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| e.to_string())?
+            .join("updates");
+        let http = reqwest::Client::builder()
+            .user_agent("syncpilot-selfupdate")
+            .build()
+            .map_err(|e| e.to_string())?;
+        let deb = crate::selfupdate::download_verified_deb(&http, &version, &dest_dir).await?;
+        tauri::async_runtime::spawn_blocking(move || crate::selfupdate::install_deb(&deb))
+            .await
+            .map_err(|e| e.to_string())??;
+        app.restart();
+        #[allow(unreachable_code)]
+        return Ok(());
+    }
+
+    Err(
+        "In-app install requires the AppImage build or a deb install with dpkg and pkexec — update the rpm package manually instead."
+            .into(),
+    )
 }

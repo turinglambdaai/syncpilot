@@ -157,11 +157,18 @@ async function renderSettings(root: HTMLElement) {
         return;
       }
       updateNote.textContent = `SyncPilot ${info.version} is available.`;
-      const act = el("button", "btn primary", info.appimage ? "Download & restart" : "Open release page") as HTMLButtonElement;
+      const label = info.appimage
+        ? "Download & restart"
+        : info.deb
+          ? "Download & install…"
+          : "Open release page";
+      const act = el("button", "btn primary", label) as HTMLButtonElement;
       act.onclick = async () => {
         act.disabled = true;
-        if (info.appimage) {
-          updateNote.textContent = "Downloading update…";
+        if (info.appimage || info.deb) {
+          updateNote.textContent = info.deb
+            ? "Downloading… then approve the install in the system dialog"
+            : "Downloading update…";
           try {
             await api.installUpdate(); // restarts the app on success
           } catch (e) {
