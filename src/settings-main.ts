@@ -31,6 +31,10 @@ async function renderSettings(root: HTMLElement) {
   wrap.append(el("h1", "view-title", "SyncPilot Settings"));
   const s = await api.getAppSettings().catch(() => null);
   const daemon = await api.daemonStatus().catch(() => null);
+  // Fetched up front: the updates card's note renders it, and a fast
+  // checkForUpdates response would otherwise race the About section's
+  // declaration and crash on the temporal dead zone.
+  const version = await api.getVersion().catch(() => "?");
   if (!s) {
     wrap.append(el("p", "empty-sub", "Loading…"));
     root.append(wrap);
@@ -182,7 +186,6 @@ async function renderSettings(root: HTMLElement) {
   // ---- about ----
   const g5 = el("div", "card settings-card");
   g5.append(el("div", "card-title", "About"));
-  const version = await api.getVersion().catch(() => "?");
   g5.append(
     el(
       "div",

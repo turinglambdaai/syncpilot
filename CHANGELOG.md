@@ -4,6 +4,13 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-30
+
+### Fixed
+
+- The settings window could not scroll: the page is ~1000px tall in a 640px window, `html/body` are `overflow: hidden` (that belongs to the main-window layout) and `#settings-root` had no scroll container of its own — so the Updates card, About and the **Save Settings** button were clipped out of reach entirely. Settings are savable again and "Check for updates" is reachable (found by rendering the page at the real window size, then measuring)
+- The updates note no longer races the About section's version lookup: a fast `check_for_updates` response could hit the temporal dead zone on `version` and show `ReferenceError: Cannot access … before initialization` instead of "You are up to date"
+
 ## [0.3.0] - 2026-09-30
 
 ### Changed
