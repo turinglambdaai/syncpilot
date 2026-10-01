@@ -149,7 +149,7 @@
         fresh)
       proxy))
 
-(define-rpc (init : Void)
+(define-rpc (initialize : Void)
   (unless (unbox runtime)
     (define dir (or (current-data-dir) (default-data-dir)))
     (define settings (load-settings dir))

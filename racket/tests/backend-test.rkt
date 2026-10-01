@@ -88,10 +88,10 @@
 ;; ------------------------------------------------------------------- tests
 
 (test-case "init is idempotent and required first"
-  (define-values (result _events err?) (call "init"))
+  (define-values (result _events err?) (call "initialize"))
   (check-false err?)
   (check-equal? result (void))
-  (define-values (_r2 _e2 err2?) (call "init"))
+  (define-values (_r2 _e2 err2?) (call "initialize"))
   (check-false err2?))
 
 (define-values (settings _se settings-err?) (call "get-settings"))
