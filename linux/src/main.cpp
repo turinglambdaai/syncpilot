@@ -17,8 +17,10 @@
 
 #ifdef HAVE_WEBKIT
 #if defined(__has_include)
-#if __has_include(<webkitgtk-6.0/WebKit/WebKit.h>)
-#include <webkitgtk-6.0/WebKit/WebKit.h>
+#if __has_include(<webkit/webkit.h>)
+#include <webkit/webkit.h>
+#elif __has_include(<webkitgtk-6.0/webkit/webkit.h>)
+#include <webkitgtk-6.0/webkit/webkit.h>
 #elif __has_include(<WebKit/WebKit.h>)
 #include <WebKit/WebKit.h>
 #else
@@ -219,6 +221,17 @@ GtkWidget* build_boot_page() {
   return holder;
 }
 
+// GTK4 has no overlay pass-through API: input only reaches mapped widgets,
+// so the banner stays unmapped while hidden and maps only when it starts
+// revealing. The child-revealed notification hides it again after the
+// crossfade finishes.
+void on_banner_child_revealed(GObject* object, GParamSpec*, gpointer) {
+  auto* revealer = GTK_REVEALER(object);
+  if (!gtk_revealer_get_child_revealed(revealer)) {
+    gtk_widget_set_visible(GTK_WIDGET(revealer), FALSE);
+  }
+}
+
 GtkWidget* build_banner() {
   auto* revealer = gtk_revealer_new();
   gtk_revealer_set_transition_type(GTK_REVEALER(revealer),
@@ -236,7 +249,9 @@ GtkWidget* build_banner() {
   gtk_widget_set_halign(revealer, GTK_ALIGN_FILL);
   gtk_widget_set_valign(revealer, GTK_ALIGN_START);
   gtk_overlay_add_overlay(g_state.overlay, revealer);
-  gtk_overlay_set_overlay_pass_through(g_state.overlay, revealer, TRUE);
+  gtk_widget_set_visible(revealer, FALSE);
+  g_signal_connect(revealer, "notify::child-revealed",
+                   G_CALLBACK(on_banner_child_revealed), nullptr);
 
   g_state.banner = GTK_REVEALER(revealer);
   g_state.banner_label = GTK_LABEL(label);
@@ -441,6 +456,7 @@ void update_banner() {
   if (show) {
     gtk_label_set_text(g_state.banner_label,
                        phase_label(g_state.last_status->phase).c_str());
+    gtk_widget_set_visible(GTK_WIDGET(g_state.banner), TRUE);
   }
   gtk_revealer_set_reveal_child(g_state.banner, show);
 }
