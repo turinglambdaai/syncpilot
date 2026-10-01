@@ -36,6 +36,7 @@ jobs:
         with:
           path: ${{ runner.temp }}/racket-embed
           key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
+          save-always: true
 
       - name: Build Racket CS 9.3 from pinned source
         if: steps.cache-racket-embed.outputs.cache-hit != 'true'
@@ -75,10 +76,11 @@ jobs:
           set -euo pipefail
           echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          # The backend's dependency closure (net/url and friends) is not part
-          # of the minimal distribution; ctool needs their sources at build
-          # time to fold them into res/core.zo.
-          raco pkg install --auto --no-docs --skip-installed net-lib openssl-lib
+          # The backend's dependency closure is not part of the minimal
+          # distribution: net/url (net-lib) and the HTTPS bindings the
+          # rslsync installer needs (openssl). ctool folds their sources
+          # into res/core.zo at build time.
+          raco pkg install --auto --no-docs --skip-installed net-lib openssl
           raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
 
       - name: Build backend bundle and host
