@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+# Generated fake rslsync daemon (see write-fake-daemon! in support.rkt).
+# The manager spawns `<binary> --nodaemon --config <conf>`; the script reads
+# the Web UI port out of the conf (proving the manager wrote it).
+#
+# Modes are baked in by the generator:
+# - "ok"      : implements the verified token/version action protocol on the
+#               port (a compatible daemon); exits as soon as the stop file
+#               appears (crash trigger), consuming it so a supervisor
+#               restart starts clean;
+# - "foreign" : serves HTTP 401 (foreign daemon on the port);
+# - "never"   : sleeps forever without opening the port (start timeout);
+# - "exit"    : exits with the baked exit code immediately.
+
+import os
+import re
+import socket
+import sys
+import threading
+import time
+
+MODE = "@MODE@"
+EXIT_CODE = @EXIT-CODE@
+STOP_FILE = "@STOP-FILE@"
+LOG_FILE = STOP_FILE + ".log"
+
+args = sys.argv[1:]
+conf = None
+for i, a in enumerate(args):
+    if a == "--config" and i + 1 < len(args):
+        conf = args[i + 1]
+        break
+body = open(conf).read()
+PORT = int(re.search(r"127\.0\.0\.1:([0-9]+)", body).group(1))
+
+
+def log(what):
+    try:
+        with open(LOG_FILE, "a") as f:
+            f.write("%.3f %s\n" % (time.time() * 1000, what))
+    except OSError:
+        pass
+
+
+def listen_with_retry(port, attempts=100):
+    # A restart rebinds the port the previous instance just released; give
+    # the kernel a moment when the bind races the close.
+    for n in range(attempts):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # like every real server: a restart may rebind a port whose old
+            # connections are still in TIME_WAIT
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(("127.0.0.1", port))
+            s.listen(16)
+            return s
+        except OSError:
+            time.sleep(0.1)
+    raise RuntimeError("cannot bind port %d" % port)
+
+
+def respond(sock, code, body_str, set_cookie=None):
+    head = "HTTP/1.1 %d X\r\nContent-Type: application/json\r\n" % code
+    if set_cookie:
+        head += "Set-Cookie: %s\r\n" % set_cookie
+    payload = body_str.encode()
+    head += "Content-Length: %d\r\nConnection: close\r\n\r\n" % len(payload)
+    sock.sendall(head.encode() + payload)
+
+
+def read_head(sock):
+    # Read the request head (until CRLFCRLF) like a real HTTP server.
+    data = b""
+    while b"\r\n\r\n" not in data:
+        chunk = sock.recv(4096)
+        if not chunk:
+            return None
+        data += chunk
+    return data.decode("latin-1")
+
+
+# Minimal verified action protocol for "ok" mode: token.html issues a fresh
+# token; /gui/?token=...&action=version answers the success envelope; a
+# stale token answers 400 "invalid request"; a bare GET /gui/ (what
+# probe_port sends) answers 200.
+current_token = ["TOK-0"]
+
+
+def answer(sock, head, set_cookie=None):
+    if "POST /gui/token.html" in head:
+        current_token[0] = "TOK-%d" % (time.time() * 1000)
+        respond(sock, 200,
+                "<html><div id='token' style='display:none;'>%s</div></html>"
+                % current_token[0],
+                "id=fakesess; Path=/")
+    elif ("GET /gui/" in head and "token=" in head
+          and ("token=" + current_token[0]) in head):
+        if "action=version" in head:
+            respond(sock, 200, '{"status":200,"value":"3.1.2 (1076)"}')
+        else:
+            respond(sock, 200, '{"status":200}')
+    elif "GET /gui/" in head and "token=" in head:
+        respond(sock, 400, "invalid request")
+    else:
+        respond(sock, 200, "{}")
+
+
+listener = None
+if MODE == "exit":
+    sys.exit(EXIT_CODE)
+if MODE == "never":
+    while True:
+        time.sleep(3600)
+
+listener = listen_with_retry(PORT)
+
+if MODE == "foreign":
+    while True:
+        conn, _ = listener.accept()
+        respond(conn, 401, "")
+        conn.close()
+
+if MODE == "ok":
+    # Crash trigger: a watcher thread so the daemon dies even while blocked
+    # in accept; it consumes the stop file on the way out so a supervisor
+    # restart finds a clean slate.
+    def watch():
+        while True:
+            if os.path.exists(STOP_FILE):
+                try:
+                    os.remove(STOP_FILE)
+                except OSError:
+                    pass
+                os._exit(0)
+            time.sleep(0.05)
+
+    threading.Thread(target=watch, daemon=True).start()
+    log("listening")
+    while True:
+        conn, _ = listener.accept()
+        head = read_head(conn)
+        if head is None:
+            conn.close()
+            continue
+        answer(conn, head)
+        conn.close()
