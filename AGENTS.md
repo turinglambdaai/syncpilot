@@ -15,7 +15,7 @@ SyncPilot 正在以 Rivet（github.com/turinglambdaai/rivet）重建：一份 Ra
 |---|---|---|---|
 | macOS | SwiftUI 宿主 + 生成客户端 | `macos-host/` | 待建 |
 | Windows | C++/WinRT 宿主 + 生成客户端 | `windows/` | 待建 |
-| Linux | GTK4 宿主 + 生成客户端 | `linux/` | 待建 |
+| Linux | GTK4 宿主 + 生成客户端 | `linux/` | 已编写，待 Linux 实机构建验证（Web UI 内嵌，需 webkitgtk-6.0） |
 |（SyncPilot 仅面向 Linux；macOS/Windows 宿主仅为三端脚手架完整而保留） |
 
 ## 快速命令
@@ -47,5 +47,5 @@ raco test racket/          # 领域核心测试
 ├── shared/i18n/        zh.json / en.json 单源
 ├── macos-host/         SwiftUI 宿主（待建）
 ├── windows/            WinUI3 宿主（待建）
-└── linux/              GTK4 宿主（待建）
+└── linux/              GTK4 宿主（已编写，待 Linux 实机构建验证；详见 linux/README.md）
 ```
