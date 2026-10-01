@@ -5,11 +5,12 @@ GTK4 window over one embedded Racket CS backend, speaking RVT1 through the
 shared `runtime/` codec. The backend owns the rslsync daemon and the
 auth-injecting reverse proxy; the host only renders and interacts.
 
-Status: **written, not yet compile-verified** — the code was authored
-off-platform (no GTK4/WebKitGTK on the authoring machine) against the real
-generated client (`linux/GeneratedBackend.hpp`) and the Rivet Linux runtime
-contract. First build must happen on a Linux box; expect small API-level
-fixes.
+Status: **compiled, packaged, and launch-smoked in CI** — GitHub Actions
+(ubuntu-24.04) runs `raco rivet build` with WebKitGTK 6.0 enabled, then
+`raco rivet package` / `verify` with rivet's built-in launch smoke (the
+packaged app must survive 5 seconds under Xvfb). No human has driven the
+UI on a real desktop session yet; expect interaction-level polish, not
+API-level fixes.
 
 ## What it does
 
@@ -107,11 +108,9 @@ linux/
 
 ## Honest gaps (v1)
 
-- **Not yet compiled.** The host was written against the generated client
-  and the Rivet Linux runtime headers, off a machine with no GTK4. Treat the
-  first Linux build as the real review: expect include/signature-level
-  adjustments only (logic and RPC names are taken verbatim from
-  `linux/GeneratedBackend.hpp`).
+- **Compile-verified only.** CI proves the build and a 5-second launch, but
+  nobody has exercised boot → daemon → web view on real hardware (rslsync
+  installed, real desktop session). Interaction polish may still surface.
 - **No tray** (and therefore no close-to-tray): `rivet::system` has no
   Linux tray contract — StatusNotifierItem hosting is compositor-dependent
   (GNOME needs an extension), an upstream gap. The settings row is shown
