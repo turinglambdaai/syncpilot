@@ -1,5 +1,7 @@
 # SyncPilot
 
+> **Rivet rebuild (this branch):** `usyncpilot` is being rebuilt on [Rivet](https://github.com/turinglambdaai/rivet) — one Racket domain core driving first-party native hosts over typed RPC (see AGENTS.md). The stack described below is the archived `main` line, kept as the behavior/visual reference.
+
 A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) (`rslsync`) on Linux — it embeds the **official Resilio Web UI** in a desktop window, so the interface and workflow are exactly the official Windows/macOS client experience, with everything Linux was missing on top: daemon lifecycle, tray, autostart, crash watchdog and in-app updates.
 
 [![homepage](https://img.shields.io/badge/homepage-syncpilot.jrtx.site-2563eb)](https://syncpilot.jrtx.site/) [![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Tauri%202-orange)

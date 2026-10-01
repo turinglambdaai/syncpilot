@@ -1,5 +1,7 @@
 # SyncPilot
 
+> **Rivet 重建（本分支）：** 正在以 [Rivet](https://github.com/turinglambdaai/rivet) 重建——一份 Racket 领域核心通过类型化 RPC 驱动各平台第一方原生宿主（见 AGENTS.md）。下文描述的旧栈是已归档的 `main` 线，仅作行为与视觉参照。
+
 [Resilio Sync](https://www.resilio.com/individuals/)（`rslsync`）的 Linux 原生桌面壳——在桌面窗口内嵌**官方 Resilio Web UI**，界面与操作流程和官方 Windows/macOS 客户端完全一致，并补齐 Linux 缺的部分：守护进程管理、托盘、开机自启、崩溃看护和应用内更新。
 
 [![homepage](https://img.shields.io/badge/homepage-syncpilot.jrtx.site-2563eb)](https://syncpilot.jrtx.site/) [![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Tauri%202-orange)

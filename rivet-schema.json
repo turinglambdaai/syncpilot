@@ -1,0 +1,449 @@
+{
+  "device-rpcs": [],
+  "enums": [
+    {
+      "cases": [
+        "stopped",
+        "starting",
+        "running",
+        "crashed",
+        "failed"
+      ],
+      "name": "DaemonPhase"
+    },
+    {
+      "cases": [
+        "compatible",
+        "foreign",
+        "unreachable"
+      ],
+      "name": "PortProbe"
+    }
+  ],
+  "events": [
+    {
+      "name": "daemon-changed",
+      "type": {
+        "kind": "record",
+        "name": "DaemonStatus"
+      }
+    }
+  ],
+  "format": "rivet-schema",
+  "format-version": 1,
+  "records": [
+    {
+      "fields": [
+        {
+          "name": "phase",
+          "type": {
+            "kind": "record",
+            "name": "DaemonPhase"
+          }
+        },
+        {
+          "name": "pid",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "uptime-secs",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "binary",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "error",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "autostart",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        }
+      ],
+      "name": "DaemonStatus"
+    },
+    {
+      "fields": [
+        {
+          "name": "proxy-url",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "daemon-version",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "phase",
+          "type": {
+            "kind": "record",
+            "name": "DaemonPhase"
+          }
+        }
+      ],
+      "name": "Handoff"
+    },
+    {
+      "fields": [
+        {
+          "name": "ok",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "path",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "error",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        }
+      ],
+      "name": "InstallResult"
+    },
+    {
+      "fields": [
+        {
+          "name": "rslsync-path",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "webui-port",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "webui-login",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "has-password",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "device-name",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "autostart",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "restart-on-crash",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "keep-daemon-on-exit",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "close-to-tray",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "settings-version",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        }
+      ],
+      "name": "Settings"
+    },
+    {
+      "fields": [
+        {
+          "name": "rslsync-path",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "webui-port",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "webui-login",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "device-name",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "autostart",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "restart-on-crash",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "keep-daemon-on-exit",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "close-to-tray",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        }
+      ],
+      "name": "SettingsDraft"
+    },
+    {
+      "fields": [
+        {
+          "name": "down-bytes",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "up-bytes",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        }
+      ],
+      "name": "Speeds"
+    },
+    {
+      "fields": [
+        {
+          "name": "ok",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "error",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        }
+      ],
+      "name": "TrialResult"
+    }
+  ],
+  "rpcs": [
+    {
+      "arguments": [],
+      "name": "daemon-restart",
+      "result": {
+        "kind": "record",
+        "name": "DaemonStatus"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "daemon-start",
+      "result": {
+        "kind": "record",
+        "name": "DaemonStatus"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "daemon-stop",
+      "result": {
+        "kind": "record",
+        "name": "DaemonStatus"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "get-handoff",
+      "result": {
+        "kind": "record",
+        "name": "Handoff"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "get-settings",
+      "result": {
+        "kind": "record",
+        "name": "Settings"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "get-speeds",
+      "result": {
+        "kind": "record",
+        "name": "Speeds"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "initialize",
+      "result": {
+        "kind": "scalar",
+        "name": "Void"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "install-rslsync",
+      "result": {
+        "kind": "record",
+        "name": "InstallResult"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "open-trial",
+      "result": {
+        "kind": "record",
+        "name": "TrialResult"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "probe-port",
+      "result": {
+        "kind": "record",
+        "name": "PortProbe"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "regenerate-password",
+      "result": {
+        "kind": "record",
+        "name": "Settings"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "draft",
+          "type": {
+            "kind": "record",
+            "name": "SettingsDraft"
+          }
+        }
+      ],
+      "name": "save-settings",
+      "result": {
+        "kind": "record",
+        "name": "Settings"
+      }
+    }
+  ],
+  "rvt-protocol": 1,
+  "states": [
+    {
+      "name": "status",
+      "type": {
+        "kind": "record",
+        "name": "DaemonStatus"
+      }
+    }
+  ]
+}

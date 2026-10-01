@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 .sync/
+
+# rivet build artifacts
+.rivet/
+build/
+dist/
+compiled/
