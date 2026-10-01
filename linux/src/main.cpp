@@ -221,17 +221,6 @@ GtkWidget* build_boot_page() {
   return holder;
 }
 
-// GTK4 has no overlay pass-through API: input only reaches mapped widgets,
-// so the banner stays unmapped while hidden and maps only when it starts
-// revealing. The child-revealed notification hides it again after the
-// crossfade finishes.
-void on_banner_child_revealed(GObject* object, GParamSpec*, gpointer) {
-  auto* revealer = GTK_REVEALER(object);
-  if (!gtk_revealer_get_child_revealed(revealer)) {
-    gtk_widget_set_visible(GTK_WIDGET(revealer), FALSE);
-  }
-}
-
 GtkWidget* build_banner() {
   auto* revealer = gtk_revealer_new();
   gtk_revealer_set_transition_type(GTK_REVEALER(revealer),
@@ -249,9 +238,9 @@ GtkWidget* build_banner() {
   gtk_widget_set_halign(revealer, GTK_ALIGN_FILL);
   gtk_widget_set_valign(revealer, GTK_ALIGN_START);
   gtk_overlay_add_overlay(g_state.overlay, revealer);
-  gtk_widget_set_visible(revealer, FALSE);
-  g_signal_connect(revealer, "notify::child-revealed",
-                   G_CALLBACK(on_banner_child_revealed), nullptr);
+  // GTK4 removed the overlay pass-through API; can_target makes the banner
+  // transparent to input so clicks reach the web view beneath it.
+  gtk_widget_set_can_target(revealer, FALSE);
 
   g_state.banner = GTK_REVEALER(revealer);
   g_state.banner_label = GTK_LABEL(label);
@@ -456,7 +445,6 @@ void update_banner() {
   if (show) {
     gtk_label_set_text(g_state.banner_label,
                        phase_label(g_state.last_status->phase).c_str());
-    gtk_widget_set_visible(GTK_WIDGET(g_state.banner), TRUE);
   }
   gtk_revealer_set_reveal_child(g_state.banner, show);
 }

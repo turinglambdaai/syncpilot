@@ -68,7 +68,9 @@ void show_toast(GtkOverlay* overlay, std::string const& message, bool error) {
 
   gtk_overlay_add_overlay(overlay, revealer);
   // Banners are informational only: let clicks fall through to the content.
-  gtk_overlay_set_overlay_pass_through(overlay, revealer, TRUE);
+  // (GTK4 removed gtk_overlay_set_overlay_pass_through; can_target is the
+  // input-transparency replacement.)
+  gtk_widget_set_can_target(revealer, FALSE);
 
   auto* const toast = new Toast{overlay, revealer, 0, 0};
   g_object_weak_ref(G_OBJECT(overlay), on_overlay_gone, toast);
