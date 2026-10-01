@@ -153,10 +153,11 @@ void on_save_clicked(GtkButton*, gpointer) {
   if (g_ui.api == nullptr || !g_ui.loaded) return;
 
   rivet_app::SettingsDraft draft{};
-  draft.rslsync_path = gtk_entry_get_text(g_ui.binary_entry);
+  draft.rslsync_path =
+      gtk_editable_get_text(GTK_EDITABLE(g_ui.binary_entry));
   draft.webui_port = gtk_spin_button_get_value_as_int(g_ui.port_spin);
   draft.webui_login = g_ui.loaded->webui_login;
-  draft.device_name = gtk_entry_get_text(g_ui.device_entry);
+  draft.device_name = gtk_editable_get_text(GTK_EDITABLE(g_ui.device_entry));
   draft.autostart = gtk_check_button_get_active(g_ui.autostart_check);
   draft.restart_on_crash =
       gtk_check_button_get_active(g_ui.restart_crash_check);
@@ -298,12 +299,14 @@ void on_settings_loaded(Unpacked<rivet_app::Settings>& result) {
                                  : std::string(l10n::t("settings.binaryNotDetected"));
   gtk_label_set_text(g_ui.binary_label,
                      l10n::t("settings.binaryLabel", {detail}).c_str());
-  gtk_entry_set_text(g_ui.binary_entry, s.rslsync_path.c_str());
+  gtk_editable_set_text(GTK_EDITABLE(g_ui.binary_entry),
+                        s.rslsync_path.c_str());
   gtk_check_button_set_active(g_ui.autostart_check, s.autostart);
   gtk_check_button_set_active(g_ui.restart_crash_check, s.restart_on_crash);
   gtk_check_button_set_active(g_ui.keep_daemon_check, s.keep_daemon_on_exit);
   gtk_check_button_set_active(g_ui.close_to_tray_check, s.close_to_tray);
-  gtk_entry_set_text(g_ui.device_entry, s.device_name.c_str());
+  gtk_editable_set_text(GTK_EDITABLE(g_ui.device_entry),
+                        s.device_name.c_str());
   gtk_spin_button_set_value(g_ui.port_spin,
                             static_cast<gdouble>(s.webui_port));
 }
