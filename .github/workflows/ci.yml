@@ -76,11 +76,9 @@ jobs:
           set -euo pipefail
           echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          # The backend's dependency closure is not part of the minimal
-          # distribution: net/url (net-lib) and the HTTPS bindings the
-          # rslsync installer needs (openssl). ctool folds their sources
-          # into res/core.zo at build time.
-          raco pkg install --auto --no-docs --skip-installed net-lib openssl
+          # net/url and openssl (needed by the rslsync installer's HTTPS
+          # download) ship inside the minimal distribution, so no extra
+          # packages are required for the backend dependency closure.
           raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
 
       - name: Build backend bundle and host
