@@ -16,6 +16,118 @@ jobs:
         with:
           version: stable
       - name: Install rivet (upstream main)
-        run: raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet
+        run: raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
       - name: Domain core tests
         run: raco test racket/
+
+  # SyncPilot is a Linux-only product: the GTK4 host is the only first-party
+  # host, so CI compiles it for real (backend bundle + CMake host) and boots
+  # it briefly under Xvfb. The embeddable Racket CS build is the expensive
+  # part and is cached.
+  linux-host:
+    name: Linux host (GTK4 + WebKitGTK)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache embeddable Racket CS 9.3
+        id: cache-racket-embed
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/racket-embed
+          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
+
+      - name: Build Racket CS 9.3 from pinned source
+        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/racket-minimal-9.3-src-builtpkgs.tgz"
+          source_root="$RUNNER_TEMP/racket-9.3"
+          build_root="$RUNNER_TEMP/racket-embed-build"
+          embed_prefix="$RUNNER_TEMP/racket-embed"
+
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-src-builtpkgs.tgz
+          echo "3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295  $archive" |
+            sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          mkdir -p "$build_root"
+          cd "$build_root"
+          "$source_root/src/configure" --prefix="$embed_prefix"
+          make -j4
+          make install
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --yes \
+            libgtk-4-dev \
+            libwebkitgtk-6.0-dev \
+            libsecret-1-dev \
+            liblz4-dev \
+            zlib1g-dev \
+            libncurses-dev \
+            xvfb
+
+      - name: Install rivet (upstream main) into the embed Racket
+        run: |
+          set -euo pipefail
+          echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
+          # The backend's dependency closure (net/url and friends) is not part
+          # of the minimal distribution; ctool needs their sources at build
+          # time to fold them into res/core.zo.
+          raco pkg install --auto --no-docs --skip-installed net-lib openssl-lib
+          raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
+
+      - name: Build backend bundle and host
+        run: |
+          set -euo pipefail
+          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
+          embed_prefix="$RUNNER_TEMP/racket-embed"
+
+          # Unix-style source installs put the embed headers under
+          # include/racket, not include/. Locate the real one.
+          racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
+          petite_source="$(find "$embed_prefix" -name petite.boot -print -quit)"
+          scheme_source="$(find "$embed_prefix" -name scheme.boot -print -quit)"
+          racket_boot_source="$(find "$embed_prefix" -name racket.boot -print -quit)"
+          racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
+          for artifact in "$racket_include" "$petite_source" "$scheme_source" "$racket_boot_source" "$racket_library"; do
+            if [[ -z "$artifact" || "$artifact" = "." ]]; then
+              echo "Racket CS embed artifact not found under $embed_prefix" >&2
+              exit 1
+            fi
+          done
+
+          export RIVET_RACKET_INCLUDE="$racket_include"
+          export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
+          export RIVET_RACKET_LIBRARY="$racket_library"
+          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
+
+          raco rivet doctor
+          raco rivet build
+          test -x .rivet/stage/RivetHost
+          # The WebKitGTK dev package is installed, so the full-UI variant
+          # (HAVE_WEBKIT) must be what got linked.
+          ldd .rivet/stage/RivetHost | grep -qi webkit
+
+      # Package and verify run rivet's built-in launch smoke by default: the
+      # packaged app must survive 5 seconds under a real (virtual) display.
+      # On CI initialize fails with "rslsync not found", which shows the boot
+      # page's error card — that is the expected state.
+      - name: Package and verify (with launch smoke)
+        run: |
+          set -euo pipefail
+          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
+          embed_prefix="$RUNNER_TEMP/racket-embed"
+          racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
+          racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
+          petite_source="$(find "$embed_prefix" -name petite.boot -print -quit)"
+          export RIVET_RACKET_INCLUDE="$racket_include"
+          export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
+          export RIVET_RACKET_LIBRARY="$racket_library"
+          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
+          xvfb-run -a bash -c 'set -euo pipefail; raco rivet package && raco rivet verify'
+          test -x dist/syncpilot-linux-x64/RivetHost
