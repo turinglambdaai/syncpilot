@@ -1,0 +1,130 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  linux-release:
+    name: Linux x64 release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache embeddable Racket CS 9.3
+        id: cache-racket-embed
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/racket-embed
+          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
+          save-always: true
+
+      - name: Build Racket CS 9.3 from pinned source
+        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/racket-minimal-9.3-src-builtpkgs.tgz"
+          source_root="$RUNNER_TEMP/racket-9.3"
+          build_root="$RUNNER_TEMP/racket-embed-build"
+          embed_prefix="$RUNNER_TEMP/racket-embed"
+
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-src-builtpkgs.tgz
+          echo "3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295  $archive" |
+            sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          mkdir -p "$build_root"
+          cd "$build_root"
+          "$source_root/src/configure" --prefix="$embed_prefix"
+          make -j4
+          make install
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --yes \
+            libgtk-4-dev \
+            libwebkitgtk-6.0-dev \
+            libsecret-1-dev \
+            liblz4-dev \
+            zlib1g-dev \
+            libncurses-dev \
+            xvfb
+
+      - name: Install rivet (upstream main) into the embed Racket
+        run: |
+          set -euo pipefail
+          echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
+          raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
+
+      # The tag is the release's promise; rivet.rktd is what the binary
+      # reports. They must agree before anything is built.
+      - name: Check tag matches the declared version
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          declared="$(sed -n 's/.*(version . "\([0-9][0-9.]*\)").*/\1/p' rivet.rktd)"
+          if [ "$tag_version" != "$declared" ]; then
+            echo "tag ${GITHUB_REF_NAME} but rivet.rktd declares ${declared}" >&2
+            echo "bump rivet.rktd (and CHANGELOG.md) before tagging." >&2
+            exit 1
+          fi
+
+      - name: Build backend bundle and host
+        run: |
+          set -euo pipefail
+          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
+          embed_prefix="$RUNNER_TEMP/racket-embed"
+          racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
+          racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
+          petite_source="$(find "$embed_prefix" -name petite.boot -print -quit)"
+          export RIVET_RACKET_INCLUDE="$racket_include"
+          export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
+          export RIVET_RACKET_LIBRARY="$racket_library"
+          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
+          raco rivet doctor
+          raco rivet build
+          test -x .rivet/stage/RivetHost
+          ldd .rivet/stage/RivetHost | grep -qi webkit
+
+      # Launch smoke included: the packaged app must survive 5 seconds.
+      # `raco rivet release` (signed update manifest + SBOM) needs the
+      # RIVET_UPDATE_* key trio, which SyncPilot has not configured yet and
+      # the rivet rebuild has no in-app updater to serve; ship the plain
+      # installer tarball until then.
+      - name: Package and verify (with launch smoke)
+        run: |
+          set -euo pipefail
+          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
+          embed_prefix="$RUNNER_TEMP/racket-embed"
+          racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
+          racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
+          petite_source="$(find "$embed_prefix" -name petite.boot -print -quit)"
+          export RIVET_RACKET_INCLUDE="$racket_include"
+          export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
+          export RIVET_RACKET_LIBRARY="$racket_library"
+          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
+          xvfb-run -a bash -c 'set -euo pipefail; raco rivet package && raco rivet verify'
+          test -x dist/syncpilot-linux-x64/RivetHost
+
+      - name: Tar the installer
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          tar -czf "syncpilot-${version}-linux-x64.tar.gz" -C dist syncpilot-linux-x64
+          sha256sum "syncpilot-${version}-linux-x64.tar.gz" > "syncpilot-${version}-linux-x64.tar.gz.sha256"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" \
+            --title "SyncPilot ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            "syncpilot-${GITHUB_REF_NAME#v}-linux-x64.tar.gz" \
+            "syncpilot-${GITHUB_REF_NAME#v}-linux-x64.tar.gz.sha256"
