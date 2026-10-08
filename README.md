@@ -6,6 +6,23 @@ A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) 
 
 **English** · [中文](README.zh-CN.md) · 🌐 [syncpilot.jrtx.site](https://syncpilot.jrtx.site/)
 
+SyncPilot runs and manages the official `rslsync` daemon behind a native window that shows the official Resilio Web UI. It talks to the daemon over loopback only — your keys and files never leave your machine.
+<p align="center">
+  <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
+</p>
+
+SyncPilot is built on [Rivet](https://github.com/turinglambdaai/rivet): one Racket domain core (daemon manager, conf generation, auth-injecting proxy, settings) driving a first-party GTK4 host over typed RPC — the host only renders and interacts, all logic lives in the backend.
+
+## Features
+
+- **Official interface, zero drift** — folders, peers, transfers, preferences, activation: every screen and interaction is the official Web UI, version-matched to your rslsync build. Nothing to re-learn, nothing to re-implement
+- **Daemon lifecycle** — one-click start/stop, adopt an already-running daemon (systemd, previous session), crash watchdog with exponential backoff, optional keep-running-on-exit
+- **First-run install of rslsync** — if no official binary is found, SyncPilot downloads it from Resilio's CDN (sha256-pinned) into `~/.local/bin`
+- **Desktop integration** — launch at login (XDG autostart), single-instance restore
+- **Safe by construction** — the Web UI stays bound to `127.0.0.1` with app-generated credentials; the backend serves it through a loopback auth-injecting proxy so you never see a login prompt, and the daemon never serves an unauthenticated request
+- **Drop-in upgrade** — data paths and formats are byte-identical with 0.4.x (`~/.local/share/site.jrtx.syncpilot`); settings, device identity and the daemon config carry over untouched
+
+## Honest gaps (vs. 0.4.x)
 
 - **No tray icon** yet — close quits instead of hiding to tray; waiting on the rivet tray contract ([turinglambdaai/rivet#118](https://github.com/turinglambdaai/rivet/issues/118))
 - **No in-app updates** yet — update when a new release lands; the rivet update flow (signed manifests) will replace the old deb/AppImage updater
