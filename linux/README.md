@@ -5,12 +5,14 @@ GTK4 window over one embedded Racket CS backend, speaking RVT1 through the
 shared `runtime/` codec. The backend owns the rslsync daemon and the
 auth-injecting reverse proxy; the host only renders and interacts.
 
-Status: **compiled, packaged, and launch-smoked in CI** — GitHub Actions
+Status: **compiled, packaged, and integration-smoked in CI** — GitHub Actions
 (ubuntu-24.04) runs `raco rivet build` with WebKitGTK 6.0 enabled, then
-`raco rivet package` / `verify` with rivet's built-in launch smoke (the
-packaged app must survive 5 seconds under Xvfb). No human has driven the
-UI on a real desktop session yet; expect interaction-level polish, not
-API-level fixes.
+`raco rivet package` / `verify` with rivet's built-in launch smoke. An
+integration step installs the pinned rslsync binary and asserts the real
+backend chain end to end: `initialize` spawns the daemon, its Web UI
+listens on 127.0.0.1:38889, and the auth-injecting proxy answers HTTP 200
+for `/gui/`. No human has driven the UI on a real desktop session yet;
+expect interaction-level polish, not API-level fixes.
 
 ## What it does
 
@@ -108,9 +110,10 @@ linux/
 
 ## Honest gaps (v1)
 
-- **Compile-verified only.** CI proves the build and a 5-second launch, but
-  nobody has exercised boot → daemon → web view on real hardware (rslsync
-  installed, real desktop session). Interaction polish may still surface.
+- **Backend-verified, not yet hand-driven.** CI proves the build, the
+  daemon/proxy chain, and a 5-second launch, but nobody has clicked through
+  boot → web view → settings on a real desktop (real rslsync, real
+  session). Interaction polish may still surface.
 - **No tray** (and therefore no close-to-tray): `rivet::system` has no
   Linux tray contract — StatusNotifierItem hosting is compositor-dependent
   (GNOME needs an extension), an upstream gap. The settings row is shown
