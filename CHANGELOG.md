@@ -4,6 +4,19 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-08
+
+### Added
+
+- **The tray is back**: SyncPilot hosts a `rivet::system::TrayIcon` (StatusNotifierItem + dbusmenu, shipped by rivet f37908f / [#130](https://github.com/turinglambdaai/rivet/pull/130)) with an 打开 / 设置 / 退出 menu (zh/en). Closing the window hides it to the tray instead of quitting — the desktop convention the official clients follow — with the setting honored from day one of the rebuild and the "Hide to tray on close" row in Settings live again (insensitive only on sessions where no tray watcher exists). The tray icon uses the themed `emblem-synchronizing` glyph for now; branded art is a follow-up
+- Settings changes now reach the main window live: saving the settings window updates the close-to-tray behavior immediately, no restart needed
+
+### Fixed
+
+- `find-binary`'s well-known probe paths and PATH are injectable parameters, and the manager test that assumed a machine without a real rslsync now passes everywhere (it failed on any machine with `~/.local/bin/rslsync` present)
+- The no-WebKit build (`HAVE_WEBKIT` unset) compiles again: the browser-handoff path used the GTK3-only `gtk_get_current_event_time`
+- CI pins the rivet dependency to a fixed commit (`RIVET_PKG_SOURCE`) — builds no longer float on rivet main
+
 ## [0.5.0] - 2026-10-08
 
 ### Changed

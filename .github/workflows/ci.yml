@@ -3,6 +3,13 @@ on:
   push:
   pull_request:
 
+# Rivet is pinned: builds must be reproducible, and a framework commit is
+# only bumped deliberately (it is the API the host compiles against —
+# f37908f is the first commit with rivet::system::TrayIcon, needed by the
+# Linux host's tray). To bump: point RIVET_PKG_SOURCE at the new commit,
+# rebuild, and re-smoke.
+env:
+  RIVET_PKG_SOURCE: "https://github.com/turinglambdaai/rivet.git#f37908f"
 jobs:
   racket-tests:
     strategy:
@@ -16,7 +23,7 @@ jobs:
         with:
           version: stable
       - name: Install rivet (upstream main)
-        run: raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
+        run: raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
       - name: Domain core tests
         run: raco test racket/
 
@@ -79,7 +86,7 @@ jobs:
           # net/url and openssl (needed by the rslsync installer's HTTPS
           # download) ship inside the minimal distribution, so no extra
           # packages are required for the backend dependency closure.
-          raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
+          raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
 
       - name: Build backend bundle and host
         run: |

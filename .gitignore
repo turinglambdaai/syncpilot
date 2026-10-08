@@ -31,3 +31,7 @@ dist/
 compiled/
 macos-host/
 windows/
+
+# removed Tauri stack: local residue (gen/target) only
+defunct-tauri/
+src-tauri/

@@ -6,6 +6,13 @@ on:
 permissions:
   contents: write
 
+# Rivet is pinned: builds must be reproducible, and a framework commit is
+# only bumped deliberately (it is the API the host compiles against —
+# f37908f is the first commit with rivet::system::TrayIcon, needed by the
+# Linux host's tray). To bump: point RIVET_PKG_SOURCE at the new commit,
+# rebuild, and re-smoke.
+env:
+  RIVET_PKG_SOURCE: "https://github.com/turinglambdaai/rivet.git#f37908f"
 jobs:
   linux-release:
     name: Linux x64 release
@@ -59,7 +66,7 @@ jobs:
           set -euo pipefail
           echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
+          raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
 
       # The tag is the release's promise; rivet.rktd is what the binary
       # reports. They must agree before anything is built.

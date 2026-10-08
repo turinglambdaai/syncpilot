@@ -31,6 +31,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -83,6 +84,12 @@ struct AppState {
   std::optional<rivet_app::DaemonStatus> last_status;
   std::string proxy_url;  // last handoff URL (opens in a browser without webkit)
   std::string executable;
+
+  // Tray presence and the close-to-tray behavior it enables. The tray lives
+  // on the main context; hidden-window keep-alive mirrors the official
+  // clients (close leaves the app running, tray Open is the way back).
+  std::unique_ptr<rivet::system::TrayIcon> tray;
+  bool close_to_tray{true};
 };
 
 AppState g_state;
@@ -272,6 +279,71 @@ GtkWidget* settings_button() {
   return button;
 }
 
+// -------------------------------------------------------------------- tray
+
+void present_main_window() {
+  if (g_state.window != nullptr) {
+    // gtk_window_present only raises/focuses; a window hidden for
+    // close-to-tray needs an explicit re-show.
+    gtk_widget_set_visible(GTK_WIDGET(g_state.window), TRUE);
+    gtk_window_present(g_state.window);
+  }
+}
+
+// sp::set_close_to_tray_hint (declared in settings_window.h, defined after
+// this anonymous namespace) lands in note_close_to_tray_hint.
+void note_close_to_tray_hint(bool enabled) {
+  g_state.close_to_tray = enabled;
+}
+
+void on_tray_quit() {
+  // A real quit: the shutdown hook stops the backend, and the daemon lives
+  // on or not per the keep-daemon-on-exit setting.
+  g_state.shutting_down.store(true, std::memory_order_release);
+  g_application_quit(G_APPLICATION(g_state.app));
+}
+
+gboolean on_window_close_request(GtkWindow*, gpointer) {
+  if (g_state.shutting_down.load(std::memory_order_acquire)) return FALSE;
+  if (g_state.tray && g_state.close_to_tray) {
+    // Intercepting the close keeps the GtkWindow alive and registered with
+    // the GtkApplication, so the process (and syncing) stays up with the
+    // window merely hidden — no GApplication hold needed.
+    gtk_widget_set_visible(GTK_WIDGET(g_state.window), FALSE);
+    return TRUE;
+  }
+  return FALSE;
+}
+
+void build_tray() {
+  try {
+    if (!rivet::system::TrayIcon::available()) return;
+    g_state.tray = std::make_unique<rivet::system::TrayIcon>(
+        rivet_app::kIdentifier, rivet_app::kDisplayName,
+        "emblem-synchronizing");
+    g_state.tray->set_tooltip(rivet_app::kDisplayName, "Resilio Sync");
+    g_state.tray->set_menu(
+        {rivet::system::TrayMenuItem(l10n::t("tray.open"),
+                                     [] { present_main_window(); }),
+         rivet::system::TrayMenuItem(l10n::t("tray.settings"),
+                                     [] {
+                                       sp::open_settings_window(
+                                           g_state.app, g_state.api.get(),
+                                           g_state.executable,
+                                           detected_binary());
+                                     }),
+         rivet::system::TrayMenuItem(
+             rivet::system::TrayMenuItem::Type::separator),
+         rivet::system::TrayMenuItem(l10n::t("tray.quit"),
+                                     [] { on_tray_quit(); })});
+  } catch (std::exception const& e) {
+    // A session that cannot host the tray is supported: closing the window
+    // then quits as before, and the launcher + single-instance lease is the
+    // way back.
+    std::fprintf(stderr, "tray unavailable: %s\n", e.what());
+  }
+}
+
 void on_retry_clicked(GtkButton*, gpointer) { start_handoff(); }
 
 void show_retry_card(std::string const& error) {
@@ -328,8 +400,9 @@ void show_install_card(std::string const& hint_text) {
 
 #ifndef HAVE_WEBKIT
 void on_open_browser_clicked(GtkButton*, gpointer) {
-  gtk_show_uri(g_state.window, g_state.proxy_url.c_str(),
-               gtk_get_current_event_time());
+  // GTK4 has no gtk_get_current_event_time(); GDK_CURRENT_TIME lets the
+  // desktop place the browser window without a timestamp.
+  gtk_show_uri(g_state.window, g_state.proxy_url.c_str(), GDK_CURRENT_TIME);
 }
 
 void show_no_webkit_card(std::string const& url) {
@@ -358,6 +431,19 @@ void on_handoff(sp::Unpacked<rivet_app::Handoff> const& result) {
       show_retry_card(result.error);
     }
     return;
+  }
+  // Learn the close-to-tray hint once settings exist; the settings window
+  // refreshes it on every save.
+  if (g_state.api != nullptr) {
+    (void)g_state.api->get_settings_async(
+        [](rivet_app::Result<rivet_app::Settings> result) {
+          auto unpacked = sp::unpack(result);
+          sp::post_to_main<sp::Unpacked<rivet_app::Settings>>(
+              [](sp::Unpacked<rivet_app::Settings>& r) {
+                if (r.ok) note_close_to_tray_hint(r.value.close_to_tray);
+              },
+              std::move(unpacked));
+        });
   }
 #ifdef HAVE_WEBKIT
   enter_web_view(result.value.proxy_url);
@@ -577,14 +663,20 @@ void on_activate(GtkApplication* app, gpointer) {
   build_banner();
 
   g_state.window = GTK_WINDOW(window);
+  g_signal_connect(window, "close-request",
+                   G_CALLBACK(on_window_close_request), nullptr);
   gtk_stack_set_visible_child_name(g_state.stack, "boot");
   gtk_window_present(GTK_WINDOW(window));
 
   start_backend();
+  build_tray();
 }
 
 void on_shutdown(GApplication*, gpointer) {
   g_state.shutting_down.store(true, std::memory_order_release);
+  // Drop the tray before the backend goes: its menu callbacks reference
+  // host state and must not fire during teardown.
+  g_state.tray.reset();
   if (g_state.startup_thread.joinable()) {
     g_state.startup_thread.join();
   }
@@ -604,6 +696,10 @@ void on_shutdown(GApplication*, gpointer) {
 
 }  // namespace
 
+void sp::set_close_to_tray_hint(bool enabled) {
+  note_close_to_tray_hint(enabled);
+}
+
 int main(int argc, char** argv) {
   // Single-instance parity with the old app: a second launch forwards its
   // arguments to the running instance (which presents its window) and exits.
@@ -618,11 +714,7 @@ int main(int argc, char** argv) {
     }
     lease->set_activation_handler([](std::vector<std::string>) {
       sp::post_to_main<int>(
-          [](int&) {
-            if (g_state.window != nullptr) {
-              gtk_window_present(g_state.window);
-            }
-          },
+          [](int&) { present_main_window(); },
           0);
     });
   } catch (...) {

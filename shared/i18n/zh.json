@@ -64,5 +64,8 @@
   "error.notInitialized": "后端尚未初始化；请先调用 init",
   "error.checksumMismatch": "校验和不匹配：期望 {expected}，实际 {actual}——固定的 Resilio stable 可能已更新；请重新固定或手动安装",
   "error.installFailed": "{error} —— 请检查网络连接后重试，或手动安装 Resilio Sync",
-  "error.authRejected": "基本认证被拒绝（请检查 Web UI 凭据）"
+  "error.authRejected": "基本认证被拒绝（请检查 Web UI 凭据）",
+  "tray.open": "打开 SyncPilot",
+  "tray.settings": "SyncPilot 设置…",
+  "tray.quit": "退出 SyncPilot"
 }

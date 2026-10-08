@@ -163,8 +163,6 @@ void on_save_clicked(GtkButton*, gpointer) {
       gtk_check_button_get_active(g_ui.restart_crash_check);
   draft.keep_daemon_on_exit =
       gtk_check_button_get_active(g_ui.keep_daemon_check);
-  // Tray is out of scope in v1 (see linux/README.md); the stored value is
-  // passed through untouched so the setting round-trips.
   draft.close_to_tray = gtk_check_button_get_active(g_ui.close_to_tray_check);
 
   auto const port_before = static_cast<gint>(g_ui.loaded->webui_port);
@@ -180,6 +178,7 @@ void on_save_clicked(GtkButton*, gpointer) {
                 show_toast(g_ui.overlay, r.error, true);
                 return;
               }
+              set_close_to_tray_hint(r.value.close_to_tray);
               g_ui.loaded = r.value;
               bool const port_changed =
                   static_cast<gint>(r.value.webui_port) != port_before;
@@ -257,11 +256,11 @@ GtkWidget* build_desktop_card() {
     g_signal_connect(g_ui.login_check, "toggled",
                      G_CALLBACK(on_login_toggled), nullptr);
   }
-  // close-to-tray needs a tray contract the rivet Linux adapter deliberately
-  // lacks (StatusNotifierItem is compositor-dependent); the row is shown
-  // insensitive so the stored setting stays visible but inert.
+  // Close-to-tray is real when the desktop hosts a tray (rivet TrayIcon);
+  // elsewhere the row stays visible but inert, and closing the window quits.
   g_ui.close_to_tray_check = check_row(card, l10n::t("settings.hideToTray"));
-  gtk_widget_set_sensitive(GTK_WIDGET(g_ui.close_to_tray_check), FALSE);
+  gtk_widget_set_sensitive(GTK_WIDGET(g_ui.close_to_tray_check),
+                           rivet::system::TrayIcon::available());
   return card;
 }
 

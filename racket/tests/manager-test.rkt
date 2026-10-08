@@ -68,12 +68,14 @@
   (define script (write-fake-daemon! (build-path dir "fake-daemon") "ok"))
   (define m (make-test-manager dir (free-port) script))
   (check-equal? (find-binary m) script)
-  ;; Without an explicit path we rely on well-known locations; the test
-  ;; machines do not have a real rslsync installed.
+  ;; Without an explicit path, an empty well-known list and an empty PATH
+  ;; must find nothing — regardless of what the test machine has installed.
   (define m2 (make-test-manager dir (free-port) script))
   (set-box! (manager-settings-box m2)
             (struct-copy app-settings (manager-settings m2) [rslsync-path ""]))
-  (check-false (find-binary m2))
+  (check-false (parameterize ([current-well-known-binary-paths '()]
+                              [current-path-env #f])
+                 (find-binary m2)))
   (delete-directory/files dir))
 
 ;; ------------------------------------------------------------ adopt + refuse

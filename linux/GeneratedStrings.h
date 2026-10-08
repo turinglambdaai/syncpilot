@@ -80,6 +80,9 @@ inline const std::map<std::string, std::string> kZh = {
     {"error.checksumMismatch", "校验和不匹配：期望 {expected}，实际 {actual}——固定的 Resilio stable 可能已更新；请重新固定或手动安装"},
     {"error.installFailed", "{error} —— 请检查网络连接后重试，或手动安装 Resilio Sync"},
     {"error.authRejected", "基本认证被拒绝（请检查 Web UI 凭据）"},
+    {"tray.open", "打开 SyncPilot"},
+    {"tray.settings", "SyncPilot 设置…"},
+    {"tray.quit", "退出 SyncPilot"},
 };
 
 inline const std::map<std::string, std::string> kEn = {
@@ -149,6 +152,9 @@ inline const std::map<std::string, std::string> kEn = {
     {"error.checksumMismatch", "checksum mismatch: expected {expected}, got {actual} — the pinned Resilio stable may have moved; re-pin or install manually"},
     {"error.installFailed", "{error} — check your network connection and retry, or install Resilio Sync manually"},
     {"error.authRejected", "basic auth rejected (check webui credentials)"},
+    {"tray.open", "Open SyncPilot"},
+    {"tray.settings", "SyncPilot Settings…"},
+    {"tray.quit", "Quit SyncPilot"},
 };
 
 // Placeholder names per key, in the order l10n::t binds its args.

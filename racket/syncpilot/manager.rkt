@@ -33,6 +33,8 @@
          manager-port
          set-manager-notify!
          find-binary
+         current-well-known-binary-paths
+         current-path-env
          ensure-running!
          stop!
          restart!
@@ -160,22 +162,32 @@
 
 ;; ------------------------------------------------------------ binary lookup
 
+;; The well-known install locations probed between the explicit setting and
+;; $PATH. A parameter so tests can run on machines that really do have a
+;; rslsync installed (the manager must not see it unless it put it there).
+(define current-well-known-binary-paths
+  (make-parameter
+   (list (build-path (find-system-path 'home-dir) ".local" "bin" "rslsync")
+         (string->path "/usr/bin/rslsync")
+         (string->path "/usr/local/bin/rslsync")
+         (string->path "/opt/resilio-sync/rslsync"))))
+
+;; The PATH string probed after the well-known locations; parameterized for
+;; the same reason.
+(define current-path-env (make-parameter (getenv "PATH")))
+
 ;; Find the rslsync binary: explicit setting, our own install location,
 ;; well-known paths, then $PATH. ~/.local/bin (where the first-run installer
 ;; targets) is checked explicitly: desktop-launched apps often run with a
 ;; session PATH that does not include it.
 (define (find-binary m)
   (define explicit (string-trim (app-settings-rslsync-path (manager-settings m))))
-  (define home (find-system-path 'home-dir))
   (define candidates
     (append
      (if (string=? explicit "") '() (list (string->path explicit)))
-     (list (build-path home ".local" "bin" "rslsync")
-           (string->path "/usr/bin/rslsync")
-           (string->path "/usr/local/bin/rslsync")
-           (string->path "/opt/resilio-sync/rslsync"))
-     (let ([path-env (getenv "PATH")])
-       (if path-env
+     (current-well-known-binary-paths)
+     (let ([path-env (current-path-env)])
+       (if (and path-env (not (string=? path-env "")))
            (for/list ([dir (in-list (string-split path-env ":"))]
                       #:when (not (string=? dir "")))
              (build-path (string->path dir) "rslsync"))

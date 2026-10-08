@@ -64,5 +64,8 @@
   "error.notInitialized": "backend is not initialized; call init first",
   "error.checksumMismatch": "checksum mismatch: expected {expected}, got {actual} — the pinned Resilio stable may have moved; re-pin or install manually",
   "error.installFailed": "{error} — check your network connection and retry, or install Resilio Sync manually",
-  "error.authRejected": "basic auth rejected (check webui credentials)"
+  "error.authRejected": "basic auth rejected (check webui credentials)",
+  "tray.open": "Open SyncPilot",
+  "tray.settings": "SyncPilot Settings…",
+  "tray.quit": "Quit SyncPilot"
 }
