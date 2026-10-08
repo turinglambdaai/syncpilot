@@ -18,7 +18,7 @@ namespace rivet_app {
 inline constexpr char kModuleName[] = "backend";
 inline constexpr char kEntryName[] = "start";
 inline constexpr char kDisplayName[] = "SyncPilot";
-inline constexpr char kVersion[] = "0.4.0";
+inline constexpr char kVersion[] = "0.5.0";
 inline constexpr std::int64_t kBuild = 1;
 inline constexpr char kIdentifier[] = "site.jrtx.syncpilot";
 inline constexpr char kReleaseChannel[] = "stable";

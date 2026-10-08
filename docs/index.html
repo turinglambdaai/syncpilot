@@ -234,10 +234,10 @@ footer a:hover { color: var(--text); }
       Every screen is the official one — nothing to re-learn.
     </p>
     <div class="hero-actions animate">
-      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest" data-en="Download v0.2.2" data-zh="下载 v0.2.2">Download v0.2.2</a>
+      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest" data-en="Download" data-zh="下载">Download</a>
       <a class="btn btn-secondary" href="https://github.com/turinglambdaai/syncpilot" data-en="View on GitHub" data-zh="在 GitHub 查看">View on GitHub</a>
     </div>
-    <div class="trust-row animate" data-en='<b>deb</b> · <b>rpm</b> · <b>AppImage</b> &nbsp;—&nbsp; x86_64 &amp; aarch64 &nbsp;—&nbsp; free, AGPL-3.0' data-zh='<b>deb</b> · <b>rpm</b> · <b>AppImage</b> &nbsp;—&nbsp; x86_64 与 aarch64 &nbsp;—&nbsp; 免费开源，AGPL-3.0'><b>deb</b> · <b>rpm</b> · <b>AppImage</b> &nbsp;—&nbsp; x86_64 &amp; aarch64 &nbsp;—&nbsp; free, AGPL-3.0</div>
+    <div class="trust-row animate" data-en='<b>tar.gz</b> &nbsp;—&nbsp; x86_64 (Ubuntu 24.04+) &nbsp;—&nbsp; free, AGPL-3.0' data-zh='<b>tar.gz</b> &nbsp;—&nbsp; x86_64（Ubuntu 24.04+）&nbsp;—&nbsp; 免费开源，AGPL-3.0'><b>tar.gz</b> &nbsp;—&nbsp; x86_64 (Ubuntu 24.04+) &nbsp;—&nbsp; free, AGPL-3.0</div>
 
     <div class="hero-visual animate">
       <div class="code-window">
@@ -279,13 +279,13 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/><path d="m9 12 2 2 4-4"/></svg></div>
-        <h3 data-en="In-app updates" data-zh="应用内更新">In-app updates</h3>
-        <p data-en="Every release ships signed updater artifacts. SyncPilot checks the GitHub release and updates itself — no manual re-downloads." data-zh="每个版本都带签名的更新工件。SyncPilot 检查 GitHub release 并自我更新——无需手动重新下载。">Every release ships signed updater artifacts. SyncPilot checks the GitHub release and updates itself — no manual re-downloads.</p>
+        <h3 data-en="Drop-in upgrade" data-zh="原地升级">Drop-in upgrade</h3>
+        <p data-en="Data paths and formats are identical across versions — settings, device identity and the daemon config carry over untouched. Unpack the new build and keep syncing." data-zh="数据路径与格式跨版本一致——设置、设备身份与守护进程配置原样保留。解压新版本即可继续同步。">Data paths and formats are identical across versions — settings, device identity and the daemon config carry over untouched. Unpack the new build and keep syncing.</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 3l-4 4-4-4"/></svg></div>
         <h3 data-en="Desktop integration" data-zh="桌面集成">Desktop integration</h3>
-        <p data-en="Tray icon with quick actions, hide-to-tray on close, launch at login via XDG autostart, and a standalone native settings window." data-zh="托盘图标与快捷操作，关闭即最小化到托盘，XDG autostart 开机自启，还有独立的原生设置窗口。">Tray icon with quick actions, hide-to-tray on close, launch at login via XDG autostart, and a standalone native settings window.</p>
+        <p data-en="Launch at login via XDG autostart, single-instance window restore, and a standalone native settings window for the daemon, port and credentials." data-zh="XDG autostart 开机自启、单实例窗口唤起，还有独立的原生设置窗口管理守护进程、端口与凭据。">Launch at login via XDG autostart, single-instance window restore, and a standalone native settings window for the daemon, port and credentials.</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg></div>
@@ -306,7 +306,7 @@ footer a:hover { color: var(--text); }
       <div class="step">
         <div class="step-num">1</div>
         <h3 data-en="Install" data-zh="安装">Install</h3>
-        <p data-en="Grab the deb, rpm or AppImage for your architecture from the release page." data-zh="从 release 页面获取适合你架构的 deb、rpm 或 AppImage。">Grab the deb, rpm or AppImage for your architecture from the release page.</p>
+        <p data-en="Grab the tar.gz from the release page, unpack, run — GTK 4 and WebKitGTK come with Ubuntu 24.04+." data-zh="从 release 页面获取 tar.gz，解压即用——GTK 4 与 WebKitGTK 在 Ubuntu 24.04+ 上系统自带。">Grab the tar.gz from the release page, unpack, run — GTK 4 and WebKitGTK come with Ubuntu 24.04+.</p>
       </div>
       <div class="step-arrow">→</div>
       <div class="step">
@@ -337,27 +337,15 @@ footer a:hover { color: var(--text); }
   <div class="container">
     <div class="section-head animate">
       <h2 data-en="Get SyncPilot" data-zh="获取 SyncPilot">Get SyncPilot</h2>
-      <p data-en="v0.2.2 — install, launch, done. The official rslsync binary is fetched on first start if missing." data-zh="v0.2.2——安装、启动、完成。缺失官方 rslsync 二进制时，会在首次启动时自动获取。">v0.2.2 — install, launch, done. The official rslsync binary is fetched on first start if missing.</p>
+      <p data-en="Unpack, run, done. The official rslsync binary is fetched on first start if missing." data-zh="解压、运行、完成。缺失官方 rslsync 二进制时，会在首次启动时自动获取。">Unpack, run, done. The official rslsync binary is fetched on first start if missing.</p>
     </div>
     <div class="dl-cards animate">
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.2/SyncPilot_0.2.1_amd64.deb">
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/latest">
         <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
-        <div><b>deb</b><span>Debian / Ubuntu · x86_64</span></div>
-      </a>
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.2/SyncPilot_0.2.1_arm64.deb">
-        <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
-        <div><b>deb</b><span>Debian / Ubuntu · arm64</span></div>
-      </a>
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.2/SyncPilot_0.2.1_amd64.AppImage">
-        <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg></div>
-        <div><b>AppImage</b><span>Any distro · x86_64</span></div>
-      </a>
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/download/v0.2.2/SyncPilot_0.2.1_aarch64.AppImage">
-        <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg></div>
-        <div><b>AppImage</b><span>Any distro · arm64</span></div>
+        <div><b>tar.gz</b><span>Linux · x86_64 · Ubuntu 24.04+</span></div>
       </a>
     </div>
-    <div class="dl-note animate" data-en='rpm packages for both architectures are on the <a href="https://github.com/turinglambdaai/syncpilot/releases/latest" style="color:var(--accent);text-decoration:none;font-weight:500;">release page</a>.' data-zh='两种架构的 rpm 包都在<a href="https://github.com/turinglambdaai/syncpilot/releases/latest" style="color:var(--accent);text-decoration:none;font-weight:500;">release 页面</a>。'>rpm packages for both architectures are on the <a href="https://github.com/turinglambdaai/syncpilot/releases/latest" style="color:var(--accent);text-decoration:none;font-weight:500;">release page</a>.</div>
+    <div class="dl-note animate" data-en='0.4.x deb / rpm / AppImage packages from the previous line remain on the <a href="https://github.com/turinglambdaai/syncpilot/releases" style="color:var(--accent);text-decoration:none;font-weight:500;">releases page</a>.' data-zh='上一代 0.4.x 的 deb / rpm / AppImage 包仍在<a href="https://github.com/turinglambdaai/syncpilot/releases" style="color:var(--accent);text-decoration:none;font-weight:500;">releases 页面</a>。'>0.4.x deb / rpm / AppImage packages from the previous line remain on the <a href="https://github.com/turinglambdaai/syncpilot/releases" style="color:var(--accent);text-decoration:none;font-weight:500;">releases page</a>.</div>
   </div>
 </section>
 

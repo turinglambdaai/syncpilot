@@ -4,6 +4,19 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-08
+
+### Changed
+
+- **SyncPilot is rebuilt on [Rivet](https://github.com/turinglambdaai/rivet)**: one Racket domain core (daemon manager, conf generation, auth-injecting proxy, settings, first-run installer) driving a first-party GTK4 + WebKitGTK 6.0 host over typed RPC. The host only renders and interacts — all logic lives in the backend. The previous Tauri 2 stack is removed from the tree; it remains on the v0.4.0 tag for reference
+- **Drop-in upgrade**: data paths and formats are byte-identical with 0.4.x (`~/.local/share/site.jrtx.syncpilot`) — settings, device identity and the daemon config carry over untouched
+- Distribution is now a plain `tar.gz` (Linux x86_64, Ubuntu 24.04+ for WebKitGTK 6.0); releases are built and launch-smoked by CI, which also integration-smokes the real chain (pinned rslsync spawn, Web UI on `127.0.0.1:38889`, proxy answering for `/gui/`)
+
+### Removed
+
+- The tray icon and hide-to-tray on close: rivet has no Linux tray contract yet ([turinglambdaai/rivet#118](https://github.com/turinglambdaai/rivet/issues/118)); closing the window now quits (the keep-daemon-on-exit setting is honored, so syncing continues in the background)
+- The in-app updater (deb pkexec flow and AppImage in-place update): pending the rivet signed-manifest update flow; update via the release page for now
+
 ## [0.4.0] - 2026-09-30
 
 ### Added

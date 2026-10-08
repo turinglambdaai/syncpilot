@@ -1,8 +1,9 @@
 # rslsync Web UI API — verified against 3.1.2 (Linux)
 
-Transcript of the live verification that drove the rewrite of
-`src-tauri/src/api.rs`. Facts below were probed with
-`scripts/verify-api.sh` against the official `rslsync` 3.1.2 binary on
+Transcript of the live verification that drove the daemon-facing
+client (now `racket/syncpilot/manager.rkt` and `httputil.rkt`; the
+original probe script shipped with the pre-0.5 Tauri line). Facts
+below were probed against the official `rslsync` 3.1.2 binary on
 Ubuntu; anything still uncertain is marked so.
 
 ## Protocol (all verified)

@@ -2,21 +2,19 @@
 
 指引给 AI agent（及开发者）：如何理解、构建、运行、改动 SyncPilot（Rivet 重建线）。
 
-> 本分支（`experiment/syncpilot-rivet`）是 SyncPilot 的 Rivet 重建主线。main 是旧栈实现（Tauri 2（Rust+TS）），
-> 仅作为行为与文案参照保留；不要往 main 加功能。旧栈代码在本分支上暂时保留，
-> 待对等交付后统一清理。
+> 0.5.0 起 main 即本线：一份 Racket 领域核心 + GTK4 单宿主。旧 Tauri 2 栈已从
+> 树上删除，行为与文案参照留在 git 历史（v0.4.0 及之前的 tag）。
 
 ## 这是什么
 
-SyncPilot 正在以 Rivet（github.com/turinglambdaai/rivet）重建：一份 Racket 领域核心，
-通过 Rivet 类型化 RPC（RVT1 协议）驱动各平台第一方原生 UI 薄壳。
+SyncPilot 以 Rivet（github.com/turinglambdaai/rivet）构建：一份 Racket 领域核心，
+通过 Rivet 类型化 RPC（RVT1 协议）驱动第一方原生 UI 薄壳。
 
-| 平台宿主 | 技术栈 | 目录 | 状态 |
+SyncPilot 仅面向 Linux：
+
+| 宿主 | 技术栈 | 目录 | 状态 |
 |---|---|---|---|
-| macOS | SwiftUI 宿主 + 生成客户端 | `macos-host/` | 待建 |
-| Windows | C++/WinRT 宿主 + 生成客户端 | `windows/` | 待建 |
-| Linux | GTK4 宿主 + 生成客户端 | `linux/` | 已编写，待 Linux 实机构建验证（Web UI 内嵌，需 webkitgtk-6.0） |
-|（SyncPilot 仅面向 Linux；macOS/Windows 宿主仅为三端脚手架完整而保留） |
+| Linux | GTK4 + WebKitGTK 6.0 宿主 + 生成客户端 | `linux/` | CI 编译 + 集成冒烟全绿（真守护进程 + 代理链路断言）；详见 `linux/README.md` |
 
 ## 快速命令
 
@@ -45,7 +43,7 @@ raco test racket/          # 领域核心测试
 ├── app/backend.rkt     Rivet 后端入口（装配领域层）
 ├── racket/             Racket 领域核心 + tests/
 ├── shared/i18n/        zh.json / en.json 单源
-├── macos-host/         SwiftUI 宿主（待建）
-├── windows/            WinUI3 宿主（待建）
-└── linux/              GTK4 宿主（已编写，待 Linux 实机构建验证；详见 linux/README.md）
+├── linux/              GTK4 宿主（唯一宿主；详见 linux/README.md）
+├── docs/               产品官网（GitHub Pages → syncpilot.jrtx.site）
+└── scripts/            gen-c-strings.mjs（i18n → C 头）、install-rslsync.sh
 ```

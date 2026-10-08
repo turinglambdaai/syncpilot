@@ -1,6 +1,6 @@
 #hasheq((name . "syncpilot")
         (display-name . "SyncPilot")
-        (version . "0.4.0")
+        (version . "0.5.0")
         (build . 1)
         (identifier . "site.jrtx.syncpilot")
         (release-channel . stable)

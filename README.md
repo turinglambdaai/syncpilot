@@ -1,65 +1,71 @@
 # SyncPilot
 
-> **Rivet rebuild (this branch):** `usyncpilot` is being rebuilt on [Rivet](https://github.com/turinglambdaai/rivet) — one Racket domain core driving first-party native hosts over typed RPC (see AGENTS.md). The stack described below is the archived `main` line, kept as the behavior/visual reference.
-
-A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) (`rslsync`) on Linux — it embeds the **official Resilio Web UI** in a desktop window, so the interface and workflow are exactly the official Windows/macOS client experience, with everything Linux was missing on top: daemon lifecycle, tray, autostart, crash watchdog and in-app updates.
-
-[![homepage](https://img.shields.io/badge/homepage-syncpilot.jrtx.site-2563eb)](https://syncpilot.jrtx.site/) [![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Tauri%202-orange)
+A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) (`rslsync`) on Linux — it embeds the **official Resilio Web UI** in a desktop window, so the interface and workflow are exactly the official Windows/macOS client experience, with everything Linux was missing on top: daemon lifecycle, autostart, crash watchdog and a first-run installer for the official binary.
 
 **English** · [中文](README.zh-CN.md) · [Homepage](https://syncpilot.jrtx.site/)
+
+[![homepage](https://img.shields.io/badge/homepage-syncpilot.jrtx.site-2563eb)](https://syncpilot.jrtx.site/) [![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea)
 
 SyncPilot runs and manages the official `rslsync` daemon behind a native window that shows the official Resilio Web UI. It talks to the daemon over loopback only — your keys and files never leave your machine.
 <p align="center">
   <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
 </p>
 
+SyncPilot is built on [Rivet](https://github.com/turinglambdaai/rivet): one Racket domain core (daemon manager, conf generation, auth-injecting proxy, settings) driving a first-party GTK4 host over typed RPC — the host only renders and interacts, all logic lives in the backend.
 
 ## Features
 
 - **Official interface, zero drift** — folders, peers, transfers, preferences, activation: every screen and interaction is the official Web UI, version-matched to your rslsync build. Nothing to re-learn, nothing to re-implement
 - **Daemon lifecycle** — one-click start/stop, adopt an already-running daemon (systemd, previous session), crash watchdog with exponential backoff, optional keep-running-on-exit
-- **In-app updates** — signed updater artifacts per release (Tauri updater)
-- **Desktop integration** — tray icon with quick actions, hide-to-tray on close, launch at login (XDG autostart)
-- **Safe by construction** — the Web UI stays bound to `127.0.0.1` with app-generated credentials; the app serves it through a loopback auth-injecting proxy so you never see a login prompt, and the daemon never serves an unauthenticated request
+- **First-run install of rslsync** — if no official binary is found, SyncPilot downloads it from Resilio's CDN (sha256-pinned) into `~/.local/bin`
+- **Desktop integration** — launch at login (XDG autostart), single-instance restore
+- **Safe by construction** — the Web UI stays bound to `127.0.0.1` with app-generated credentials; the backend serves it through a loopback auth-injecting proxy so you never see a login prompt, and the daemon never serves an unauthenticated request
+- **Drop-in upgrade** — data paths and formats are byte-identical with 0.4.x (`~/.local/share/site.jrtx.syncpilot`); settings, device identity and the daemon config carry over untouched
+
+## Honest gaps (vs. 0.4.x)
+
+- **No tray icon** yet — close quits instead of hiding to tray; waiting on the rivet tray contract ([turinglambdaai/rivet#118](https://github.com/turinglambdaai/rivet/issues/118))
+- **No in-app updates** yet — update when a new release lands; the rivet update flow (signed manifests) will replace the old deb/AppImage updater
 
 ## Install
 
-Grab `deb`, `rpm` or `AppImage` (x86_64 / aarch64) from [Releases](https://github.com/turinglambdaai/syncpilot/releases).
+Grab `syncpilot-<version>-linux-x64.tar.gz` from [Releases](https://github.com/turinglambdaai/syncpilot/releases), unpack it, and run `RivetHost` (Ubuntu 24.04+ ships the required GTK 4 / WebKitGTK 6.0; everything else is bundled or base-system).
 
-If the official `rslsync` binary is not found (auto-detection covers `~/.local/bin`, `/usr/bin`, `/usr/local/bin`, `/opt/resilio-sync`, `$PATH`), SyncPilot offers to download it from Resilio's CDN on first launch (sha256-pinned, installed to `~/.local/bin`) — or install it yourself and point SyncPilot at it in **tray → SyncPilot Settings…**.
+If the official `rslsync` binary is not found (auto-detection covers `~/.local/bin`, `/usr/bin`, `/usr/local/bin`, `/opt/resilio-sync`, `$PATH`), SyncPilot offers to download it from Resilio's CDN on first launch (sha256-pinned, installed to `~/.local/bin`) — or install it yourself and point SyncPilot at it in **Settings**.
 
 ## Building from source
 
-Linux build host with the usual Tauri prerequisites (`libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`):
+Linux (or WSL2) with Racket CS 9.x, CMake, and the GTK4/WebKitGTK 6.0 dev packages:
 
 ```bash
-npm install
-npm run tauri build   # produces deb / rpm / AppImage
+raco pkg install --auto --no-docs https://github.com/turinglambdaai/rivet.git
+raco rivet build        # generates clients, compiles the backend bundle, builds the host
+raco rivet dev          # develop loop: rebuild + relaunch on change
+raco test racket/       # domain-core tests
 ```
+
+Details and manual CMake steps: [linux/README.md](linux/README.md).
 
 ## How it works
 
 ```
-┌────────────┐  spawn --nodaemon   ┌───────────────┐
-│ SyncPilot  │────────────────────▶│  rslsync      │
-│  (Tauri 2) │◀────────────────────│  (official)   │
-└────────────┐  spawn --nodaemon   ┌───────────────┐
-                 loopback auth-injecting
-┌────────────┐        proxy          ┌───────────────┐
-│ SyncPilot  │────────────────────▶│  official     │
-│  webview   │   http://127.0.0.1   │  Web UI       │
-└────────────┘                       └───────────────┘
+┌────────────────────────────┐  spawn --nodaemon  ┌───────────────┐
+│ GTK4 host (RivetHost)      │───────────────────▶│  rslsync      │
+│  boot page / web view      │◀───────────────────│  (official)   │
+│  ┌──────────────────────┐  │                    └───────────────┘
+│  │ Racket backend (CS)  │  │   loopback auth-injecting
+│  │  manager · conf      │  │        proxy (ephemeral port)
+│  │  proxy · settings    │  │  ┌───────────────┐
+│  └──────────────────────┘  │▶ │  official     │
+│       typed RPC (RVT1)     │  │  Web UI       │
+└────────────────────────────┘  └───────────────┘
 ```
 
-SyncPilot generates an `rslsync.conf` (loopback-only Web UI, random credentials, no API key — rslsync 3.x rejects locally generated ones) and launches the official binary in the foreground. The window loads the official Web UI through a second loopback listener that injects the basic-auth credentials, so the interface is pixel-for-pixel the official one and the daemon never serves an unauthenticated request. All Resilio Sync traffic (P2P, trackers, relays) is handled by the official binary itself; SyncPilot never touches your keys or files.
-
-## Developing on Linux
-
-SyncPilot manages a real `rslsync` daemon, so the full stack can only be exercised on Linux (native, VM, or WSL2). See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — a one-shot `scripts/setup-dev-ubuntu.sh` plus `scripts/verify-api.sh`, which probes the live rslsync API and dumps a report used to keep the Rust client aligned with facts.
+The Racket backend generates an `rslsync.conf` (loopback-only Web UI, random credentials, no API key — rslsync 3.x rejects locally generated ones) and launches the official binary in the foreground. The window loads the official Web UI through a second loopback listener that injects the basic-auth credentials, so the interface is pixel-for-pixel the official one and the daemon never serves an unauthenticated request. All Resilio Sync traffic (P2P, trackers, relays) is handled by the official binary itself; SyncPilot never touches your keys or files.
 
 ## Status
 
-`v0.2.0` — official Web UI embedded, in-app updates, first-run rslsync install. The daemon-facing client (lifecycle only) targets the Web UI action API verified live against rslsync 3.1.2 — protocol facts in [docs/api-verified.md](docs/api-verified.md).
+CI builds the host on ubuntu-24.04 and integration-smokes the real chain: `initialize` spawns the pinned rslsync daemon, its Web UI listens on `127.0.0.1:38889`, and the auth-injecting proxy answers for `/gui/`. The daemon-facing client targets the Web UI action API verified live against rslsync 3.1.2 — protocol facts in [docs/api-verified.md](docs/api-verified.md).
 
 ## License
 
