@@ -122,6 +122,12 @@ jobs:
       - name: Integration smoke (real daemon + proxy)
         run: |
           set -euo pipefail
+          # GitHub runners deny unprivileged network namespaces, which kills
+          # WebKit's bubblewrap sandbox ("bwrap: loopback: Operation not
+          # permitted") and aborts the process when the web view loads.
+          # Real desktop sessions sandbox fine; CI runs without it.
+          export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
+          export GTK_A11Y=none
           bash scripts/install-rslsync.sh
           cd .rivet/stage
           cleanup() {
@@ -168,6 +174,12 @@ jobs:
       - name: Package and verify (with launch smoke)
         run: |
           set -euo pipefail
+          # rslsync is installed by the integration step above, so the smoke
+          # now boots past the error card into the web view, where WebKit's
+          # bwrap sandbox hits the runner's userns restriction (see the
+          # integration step). Real desktop sessions sandbox fine.
+          export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
+          export GTK_A11Y=none
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
           embed_prefix="$RUNNER_TEMP/racket-embed"
           racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
