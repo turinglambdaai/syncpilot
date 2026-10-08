@@ -3,26 +3,9 @@
 [Resilio Sync](https://www.resilio.com/individuals/)（`rslsync`）的 Linux 原生桌面壳——在桌面窗口内嵌**官方 Resilio Web UI**，界面与操作流程和官方 Windows/macOS 客户端完全一致，并补齐 Linux 缺的部分：守护进程管理、开机自启、崩溃看护和官方二进制首次运行安装。
 
 [![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+
 [English](README.md) · **中文** · 🌐 [syncpilot.jrtx.site](https://syncpilot.jrtx.site/)
 
-
-SyncPilot 在原生窗口内运行并管理官方 `rslsync` 守护进程，窗口里显示的就是官方 Resilio Web UI。它仅通过环回地址与守护进程通信——密钥与文件永不离开你的机器。
-<p align="center">
-  <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
-</p>
-
-SyncPilot 以 [Rivet](https://github.com/turinglambdaai/rivet) 构建：一份 Racket 领域核心（守护进程管理、conf 生成、认证注入代理、设置）通过类型化 RPC 驱动第一方 GTK4 宿主——宿主只做渲染与交互，业务全部在后端。
-
-## 功能
-
-- **官方界面，零偏差**——文件夹、对端、传输、偏好设置、许可激活：每一屏都是官方 Web UI 本身，与你安装的 rslsync 版本严格对应
-- **守护进程生命周期**——一键启停，自动接管已在运行的守护进程（systemd、上次会话遗留），崩溃看护与指数退避重启，可选退出后保持运行
-- **首次运行安装 rslsync**——未检测到官方二进制时，从 Resilio CDN 下载（sha256 校验）装入 `~/.local/bin`
-- **桌面集成**——开机自启（XDG autostart）、单实例唤起
-- **构造即安全**——Web UI 仅绑定 `127.0.0.1`，凭据由应用随机生成，配置文件 `0600` 权限；后端代理层注入认证，守护进程永不响应未认证请求
-- **原地升级**——数据路径与格式和 0.4.x 逐字节一致（`~/.local/share/site.jrtx.syncpilot`）；设置、设备身份与守护进程配置原样保留
-
-## 诚实缺口（相对 0.4.x）
 
 - **暂无托盘图标**——关闭窗口即退出（不隐藏到托盘）；等 rivet 托盘契约（[turinglambdaai/rivet#118](https://github.com/turinglambdaai/rivet/issues/118)）
 - **暂无应用内更新**——新版本请到 release 页获取；rivet 更新流（签名 manifest）落地后将替代旧的 deb/AppImage 更新器
