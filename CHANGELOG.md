@@ -4,6 +4,16 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-09
+
+### Added
+
+- **Online updates (Linux)**: SyncPilot updates itself now, on the family's signed-manifest flow. Once a day (throttled in the backend) it silently checks an Ed25519-signed channel manifest — verified before parsing against the embedded public key (`syncpilot-2026-10`) — and asks before downloading anything. Consent → progress dialog → the verified tar.gz lands under `~/.local/share/site.jrtx.syncpilot/updates/` with an open-folder handoff; applying it stays a manual extract over the app directory, and rslsync state (config, storage, credentials, keys) is never touched by an update. **Check for updates** lives in a new Settings card and bypasses the daily throttle. Downloads enforce the signed byte size and SHA-256 before the file is trusted; release manifests can stage rollouts via a sticky per-install bucket
+
+### Changed
+
+- Releases are built by `raco rivet release` instead of a hand-rolled tar step: the shipped `tar.gz` is the rivet-verified package, accompanied by the signed `update-stable.json` manifest, an SBOM and `THIRD_PARTY_NOTICES.txt` in CI
+
 ## [0.5.1] - 2026-10-08
 
 ### Added

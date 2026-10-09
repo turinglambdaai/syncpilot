@@ -17,7 +17,9 @@
          "../racket/syncpilot/install.rkt"
          "../racket/syncpilot/manager.rkt"
          "../racket/syncpilot/proxy.rkt"
-         "../racket/syncpilot/settings.rkt")
+         "../racket/syncpilot/settings.rkt"
+         "../racket/syncpilot/updater.rkt"
+         "../racket/syncpilot/version.rkt")
 
 (provide start
          ;; test seam: point the data dir at a temp directory before serving
@@ -80,6 +82,28 @@
 (define-record TrialResult
   ([ok : Bool]
    [error : (Optional String)]))
+
+;; Result of a manual or silent update check. status: "available" |
+;; "up-to-date" | "throttled" | "error"; the descriptive fields are only
+;; filled for "available".
+(define-record UpdateCheck
+  ([status : String]
+   [error : (Optional String)]
+   [current-version : String]
+   [available-version : (Optional String)]
+   [build : (Optional Int64)]
+   [published-at : (Optional String)]
+   [installer : (Optional String)]
+   [size-bytes : (Optional Int64)]))
+
+;; Polled by the host while a download runs. phase: idle | checking |
+;; downloading | downloaded | error.
+(define-record UpdateState
+  ([phase : String]
+   [percent : Int64]
+   [message : (Optional String)]
+   [downloaded-path : (Optional String)]
+   [available-version : (Optional String)]))
 
 (define-event daemon-changed : DaemonStatus)
 (define-state status : DaemonStatus
@@ -288,6 +312,62 @@
   (with-handlers ([exn:fail? (lambda (e) (TrialResult #f (exn-message e)))])
     (start-trial-period! client)
     (TrialResult #t (void))))
+
+;; ------------------------------------------------------------ online updates
+
+;; The updater commits settings through the manager: it stays the single
+;; source of truth, so last-update-check-at / rollout-bucket land on disk
+;; and in every later reader.
+(define (settings-commit! mgr)
+  (lambda (s) (manager-update-settings! mgr s) (void)))
+
+(define (update-check->record result)
+  (define (opt key) (nullable (hash-ref result key #f)))
+  (UpdateCheck
+   (hash-ref result 'status "error")
+   (opt 'message)
+   (hash-ref result 'currentVersion app-version)
+   (opt 'availableVersion)
+   (opt 'build)
+   (opt 'publishedAt)
+   (opt 'installer)
+   (opt 'sizeBytes)))
+
+;; The silent startup auto-check is throttled here (not in the updater): a
+;; check younger than a day returns "throttled" instead of hitting the
+;; network, so relaunches stay offline-cheap.
+(define auto-check-interval-seconds (* 24 60 60))
+
+(define-rpc (check-updates [force Bool] : UpdateCheck)
+  (define mgr (car (require-runtime 'check-updates)))
+  (define settings (manager-settings mgr))
+  (define last (app-settings-last-update-check-at settings))
+  (define throttled
+    (and (not force)
+         (exact-integer? last)
+         (< (- (current-seconds) last) auto-check-interval-seconds)))
+  (if throttled
+      (UpdateCheck "throttled" (void) app-version (void) (void) (void) (void) (void))
+      (update-check->record
+       (perform-check! settings (settings-commit! mgr)))))
+
+;; Runs on a backend worker thread; the host follows progress via
+;; update-state. Never raises: failures surface through the state's phase.
+(define-rpc (start-download : Void)
+  (define mgr (car (require-runtime 'start-download)))
+  (start-download! (manager-settings mgr)
+                   (settings-commit! mgr)
+                   (or (current-data-dir) (default-data-dir)))
+  (void))
+
+(define-rpc (update-state : UpdateState)
+  (define s (update-state-snapshot))
+  (UpdateState
+   (hash-ref s 'phase "idle")
+   (hash-ref s 'percent 0)
+   (nullable (hash-ref s 'message #f))
+   (nullable (hash-ref s 'downloadedPath #f))
+   (nullable (hash-ref s 'availableVersion #f))))
 
 ;; ------------------------------------------------------------------- entry
 

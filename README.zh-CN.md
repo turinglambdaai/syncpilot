@@ -18,18 +18,19 @@ SyncPilot 以 [Rivet](https://github.com/turinglambdaai/rivet) 构建：一份 R
 - **官方界面，零偏差**——文件夹、对端、传输、偏好设置、许可激活：每一屏都是官方 Web UI 本身，与你安装的 rslsync 版本严格对应
 - **守护进程生命周期**——一键启停，自动接管已在运行的守护进程（systemd、上次会话遗留），崩溃看护与指数退避重启，可选退出后保持运行
 - **首次运行安装 rslsync**——未检测到官方二进制时，从 Resilio CDN 下载（sha256 校验）装入 `~/.local/bin`
-- **桌面集成**——开机自启（XDG autostart）、单实例唤起
+- **在线更新**——每天后台静默检查一次 Ed25519 签名的发布 manifest（key id `syncpilot-2026-10`）；下载前必先询问，校验签名字节数与 SHA-256 后交给你验证过的 tar.gz——rslsync 数据绝不被触碰
+- **桌面集成**——托盘常驻、关闭隐藏到托盘、开机自启（XDG autostart）、单实例唤起
 - **构造即安全**——Web UI 仅绑定 `127.0.0.1`，凭据由应用随机生成，配置文件 `0600` 权限；后端代理层注入认证，守护进程永不响应未认证请求
 - **原地升级**——数据路径与格式和 0.4.x 逐字节一致（`~/.local/share/site.jrtx.syncpilot`）；设置、设备身份与守护进程配置原样保留
 
-## 诚实缺口（相对 0.4.x）
+## 诚实缺口
 
-- **暂无托盘图标**——关闭窗口即退出（不隐藏到托盘）；等 rivet 托盘契约（[turinglambdaai/rivet#118](https://github.com/turinglambdaai/rivet/issues/118)）
-- **暂无应用内更新**——新版本请到 release 页获取；rivet 更新流（签名 manifest）落地后将替代旧的 deb/AppImage 更新器
+- **仅有 tar.gz**——暂无 deb/rpm/AppImage 打包；0.4.x 的包仍保留在[发布页](https://github.com/turinglambdaai/syncpilot/releases)
+- **更新不自动替换**——更新器会下载并通过签名校验新 tar.gz，但应用更新仍是手动解压覆盖应用目录
 
 ## 安装
 
-从 [Releases](https://github.com/turinglambdaai/syncpilot/releases) 下载 `syncpilot-<版本>-linux-x64.tar.gz`，解压后运行 `RivetHost`（Ubuntu 24.04+ 自带所需的 GTK 4 / WebKitGTK 6.0；其余依赖已捆绑或属系统基础库）。
+从 [Releases](https://github.com/turinglambdaai/syncpilot/releases) 下载 `syncpilot-<版本>-linux-x64.tar.gz`，解压后运行 `RivetHost`（Ubuntu 24.04+ 自带所需的 GTK 4 / WebKitGTK 6.0；其余依赖已捆绑或属系统基础库）。每个发布都带签名的 `update-stable.json` manifest 和 `.sha256` 校验文件；装好之后 SyncPilot 会保持自我更新——每天检查一次，应用内提供已验证的下载。
 
 若未检测到官方 `rslsync` 二进制（自动探测覆盖 `~/.local/bin`、`/usr/bin`、`/usr/local/bin`、`/opt/resilio-sync` 和 `$PATH`），SyncPilot 会在首次启动时提供从 Resilio CDN 一键下载（sha256 校验，装入 `~/.local/bin`）；也可以自行安装后在**设置**里指定路径。
 

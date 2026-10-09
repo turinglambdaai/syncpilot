@@ -35,7 +35,8 @@
                            #:keep [keep #f])
   (make-manager dir
                 (app-settings (path->string binary-path) port "syncpilot" "pw"
-                              "test-device" #t restart-on-crash keep #t 2)))
+                              "test-device" #t restart-on-crash keep #t
+                              #f #f #f 2)))
 
 (define events (box '()))
 (define (record-events! m)
@@ -85,7 +86,7 @@
   (define script (write-fake-daemon! (build-path dir "fake-daemon") "ok"))
   (define port (free-port))
   (define settings (app-settings (path->string script) port "syncpilot" "pw"
-                                 "test-device" #t #t #t #t 2))
+                                 "test-device" #t #t #t #t #f #f #f 2))
   (define conf (write-conf! dir settings))
   (define-values (proc so si se)
     (subprocess #f #f #f (path->string script) "--nodaemon" "--config" (path->string conf)))
@@ -111,7 +112,7 @@
   (define script (write-fake-daemon! (build-path dir "fake-daemon") "foreign"))
   (define port (free-port))
   (define settings (app-settings (path->string script) port "syncpilot" "pw"
-                                 "test-device" #t #t #t #t 2))
+                                 "test-device" #t #t #t #t #f #f #f 2))
   (define conf (write-conf! dir settings))
   (define-values (proc so si se)
     (subprocess #f #f #f (path->string script) "--nodaemon" "--config" (path->string conf)))

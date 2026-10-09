@@ -22,8 +22,11 @@ jobs:
       - uses: Bogdanp/setup-racket@v1.11
         with:
           version: stable
-      - name: Install rivet (upstream main)
-        run: raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
+      - name: Install rivet (upstream main) and crypto
+        run: |
+          raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
+          # crypto backs rivet/distribution (the online updater)
+          raco pkg install --auto --no-docs crypto
       - name: Domain core tests
         run: raco test racket/
 
@@ -84,9 +87,11 @@ jobs:
           echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
           # net/url and openssl (needed by the rslsync installer's HTTPS
-          # download) ship inside the minimal distribution, so no extra
-          # packages are required for the backend dependency closure.
+          # download) ship inside the minimal distribution; crypto is the
+          # rivet/distribution dependency the online updater adds to the
+          # backend dependency closure.
           raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
+          raco pkg install --auto --no-docs crypto
 
       - name: Build backend bundle and host
         run: |

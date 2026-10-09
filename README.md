@@ -18,18 +18,19 @@ SyncPilot is built on [Rivet](https://github.com/turinglambdaai/rivet): one Rack
 - **Official interface, zero drift** — folders, peers, transfers, preferences, activation: every screen and interaction is the official Web UI, version-matched to your rslsync build. Nothing to re-learn, nothing to re-implement
 - **Daemon lifecycle** — one-click start/stop, adopt an already-running daemon (systemd, previous session), crash watchdog with exponential backoff, optional keep-running-on-exit
 - **First-run install of rslsync** — if no official binary is found, SyncPilot downloads it from Resilio's CDN (sha256-pinned) into `~/.local/bin`
-- **Desktop integration** — launch at login (XDG autostart), single-instance restore
+- **Online updates** — a daily background check against an Ed25519-signed release manifest (key id `syncpilot-2026-10`); SyncPilot asks before downloading, verifies the signed size and SHA-256, and hands you the verified tar.gz — your rslsync data is never touched
+- **Desktop integration** — tray presence, hide-to-tray on close, launch at login (XDG autostart), single-instance restore
 - **Safe by construction** — the Web UI stays bound to `127.0.0.1` with app-generated credentials; the backend serves it through a loopback auth-injecting proxy so you never see a login prompt, and the daemon never serves an unauthenticated request
 - **Drop-in upgrade** — data paths and formats are byte-identical with 0.4.x (`~/.local/share/site.jrtx.syncpilot`); settings, device identity and the daemon config carry over untouched
 
-## Honest gaps (vs. 0.4.x)
+## Honest gaps
 
-- **No tray icon** yet — close quits instead of hiding to tray; waiting on the rivet tray contract ([turinglambdaai/rivet#118](https://github.com/turinglambdaai/rivet/issues/118))
-- **No in-app updates** yet — update when a new release lands; the rivet update flow (signed manifests) will replace the old deb/AppImage updater
+- **tar.gz only** — no deb/rpm/AppImage packaging yet; the 0.4.x packages remain on the [releases page](https://github.com/turinglambdaai/syncpilot/releases)
+- **Updates don't self-replace** — the updater downloads and signature-verifies the new tar.gz, but applying it is still a manual extract over the app directory
 
 ## Install
 
-Grab `syncpilot-<version>-linux-x64.tar.gz` from [Releases](https://github.com/turinglambdaai/syncpilot/releases), unpack it, and run `RivetHost` (Ubuntu 24.04+ ships the required GTK 4 / WebKitGTK 6.0; everything else is bundled or base-system).
+Grab `syncpilot-<version>-linux-x64.tar.gz` from [Releases](https://github.com/turinglambdaai/syncpilot/releases), unpack it, and run `RivetHost` (Ubuntu 24.04+ ships the required GTK 4 / WebKitGTK 6.0; everything else is bundled or base-system). Each release ships a signed `update-stable.json` manifest and a `.sha256` checksum; after installing, SyncPilot keeps itself current — it checks daily and offers verified downloads in-app.
 
 If the official `rslsync` binary is not found (auto-detection covers `~/.local/bin`, `/usr/bin`, `/usr/local/bin`, `/opt/resilio-sync`, `$PATH`), SyncPilot offers to download it from Resilio's CDN on first launch (sha256-pinned, installed to `~/.local/bin`) — or install it yourself and point SyncPilot at it in **Settings**.
 

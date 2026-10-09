@@ -61,16 +61,22 @@ jobs:
             libncurses-dev \
             xvfb
 
-      - name: Install rivet (upstream main) into the embed Racket
+      - name: Install rivet (upstream main) and crypto into the embed Racket
         run: |
           set -euo pipefail
           echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
+          # net/url and openssl (needed by the rslsync installer's HTTPS
+          # download) ship inside the minimal distribution; crypto is the
+          # rivet/distribution dependency the online updater adds to the
+          # backend closure.
           raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
+          raco pkg install --auto --no-docs crypto
 
       # The tag is the release's promise; rivet.rktd is what the binary
-      # reports. They must agree before anything is built.
-      - name: Check tag matches the declared version
+      # reports. They must agree — and the CHANGELOG must document the
+      # version — before anything is built.
+      - name: Check tag matches the declared version and CHANGELOG
         run: |
           set -euo pipefail
           tag_version="${GITHUB_REF_NAME#v}"
@@ -80,6 +86,10 @@ jobs:
             echo "bump rivet.rktd (and CHANGELOG.md) before tagging." >&2
             exit 1
           fi
+          grep -q "^## \[${tag_version}\]" CHANGELOG.md || {
+            echo "CHANGELOG.md has no '## [${tag_version}]' section" >&2
+            exit 1
+          }
 
       - name: Build backend bundle and host
         run: |
@@ -98,12 +108,18 @@ jobs:
           test -x .rivet/stage/RivetHost
           ldd .rivet/stage/RivetHost | grep -qi webkit
 
-      # Launch smoke included: the packaged app must survive 5 seconds.
-      # `raco rivet release` (signed update manifest + SBOM) needs the
-      # RIVET_UPDATE_* key trio, which SyncPilot has not configured yet and
-      # the rivet rebuild has no in-app updater to serve; ship the plain
-      # installer tarball until then.
-      - name: Package and verify (with launch smoke)
+      # `raco rivet release` = package + verify (with rivet's launch smoke)
+      # + signed installer + SBOM + the Ed25519-signed update manifest.
+      # --development skips production platform signing (none exists on
+      # Linux; installer trust is the signed manifest + SHA-256), but the
+      # update manifest still demands its own key. The smoke boots the real
+      # web view, where WebKit's bwrap sandbox hits the runner's userns
+      # restriction (see the CI workflow) — real desktops sandbox fine.
+      - name: Package, verify and sign (rivet release)
+        env:
+          RIVET_UPDATE_BASE_URL: https://github.com/turinglambdaai/syncpilot/releases/download/${{ github.ref_name }}
+          RIVET_UPDATE_KEY_ID: syncpilot-2026-10
+          RIVET_UPDATE_PRIVATE_KEY_B64: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY_B64 }}
         run: |
           set -euo pipefail
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
@@ -115,23 +131,37 @@ jobs:
           export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
           export RIVET_RACKET_LIBRARY="$racket_library"
           export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
-          xvfb-run -a bash -c 'set -euo pipefail; raco rivet package && raco rivet verify'
-          test -x dist/syncpilot-linux-x64/RivetHost
+          export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
+          export GTK_A11Y=none
+          KEY_DER="$(mktemp -d)/update-ed25519-private.der"
+          printf '%s' "$RIVET_UPDATE_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
+          export RIVET_UPDATE_PRIVATE_KEY="$KEY_DER"
+          xvfb-run -a raco rivet release --development
+          rm -f "$KEY_DER"
 
-      - name: Tar the installer
+      - name: Collect release assets
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          tar -czf "syncpilot-${version}-linux-x64.tar.gz" -C dist syncpilot-linux-x64
-          sha256sum "syncpilot-${version}-linux-x64.tar.gz" > "syncpilot-${version}-linux-x64.tar.gz.sha256"
+          test -f "dist/syncpilot-${version}-linux-x64.tar.gz"
+          test -f dist/update-stable.json
+          sha256sum "dist/syncpilot-${version}-linux-x64.tar.gz" \
+            > "syncpilot-${version}-linux-x64.tar.gz.sha256"
+          sha256sum --check "syncpilot-${version}-linux-x64.tar.gz.sha256" \
+            | grep -q OK
+          mv "dist/syncpilot-${version}-linux-x64.tar.gz" .
+          mv dist/update-stable.json .
+          ls -la
 
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" \
-            --title "SyncPilot ${GITHUB_REF_NAME#v}" \
+            --title "SyncPilot ${version}" \
             --generate-notes \
-            "syncpilot-${GITHUB_REF_NAME#v}-linux-x64.tar.gz" \
-            "syncpilot-${GITHUB_REF_NAME#v}-linux-x64.tar.gz.sha256"
+            "syncpilot-${version}-linux-x64.tar.gz" \
+            "syncpilot-${version}-linux-x64.tar.gz.sha256" \
+            update-stable.json

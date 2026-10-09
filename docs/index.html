@@ -284,7 +284,13 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 3l-4 4-4-4"/></svg></div>
-        <h3 data-en="Desktop integration" data-zh="桌面集成">Desktop integration</h3>
+      <div class="card animate">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></div>
+        <h3 data-en="Self-updating" data-zh="自我更新">Self-updating</h3>
+        <p data-en='A daily background check against an Ed25519-signed release manifest. SyncPilot always asks before downloading, verifies the signed SHA-256, and hands you the checked tar.gz — rslsync state is never touched.' data-zh='每天后台静默检查一次 Ed25519 签名的发布 manifest。下载前必先询问，校验签名的 SHA-256 后交给你核查过的 tar.gz——rslsync 数据绝不被触碰。'>A daily background check against an Ed25519-signed release manifest. SyncPilot always asks before downloading, verifies the signed SHA-256, and hands you the checked tar.gz — rslsync state is never touched.</p>
+      </div>
+      <div class="card animate">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 3l-4 4-4-4"/></svg></div>
         <p data-en="Launch at login via XDG autostart, single-instance window restore, and a standalone native settings window for the daemon, port and credentials." data-zh="XDG autostart 开机自启、单实例窗口唤起，还有独立的原生设置窗口管理守护进程、端口与凭据。">Launch at login via XDG autostart, single-instance window restore, and a standalone native settings window for the daemon, port and credentials.</p>
       </div>
       <div class="card animate">
@@ -337,12 +343,12 @@ footer a:hover { color: var(--text); }
   <div class="container">
     <div class="section-head animate">
       <h2 data-en="Get SyncPilot" data-zh="获取 SyncPilot">Get SyncPilot</h2>
-      <p data-en="Unpack, run, done. The official rslsync binary is fetched on first start if missing." data-zh="解压、运行、完成。缺失官方 rslsync 二进制时，会在首次启动时自动获取。">Unpack, run, done. The official rslsync binary is fetched on first start if missing.</p>
+      <p data-en="Unpack, run, done. After that SyncPilot keeps itself current — a daily signed-manifest check asks before downloading. The official rslsync binary is fetched on first start if missing." data-zh="解压、运行、完成。之后 SyncPilot 会保持自我更新——每天按签名 manifest 检查一次，下载前必先询问。缺失官方 rslsync 二进制时，会在首次启动时自动获取。">Unpack, run, done. After that SyncPilot keeps itself current — a daily signed-manifest check asks before downloading. The official rslsync binary is fetched on first start if missing.</p>
     </div>
     <div class="dl-cards animate">
       <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/latest">
         <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
-        <div><b>tar.gz</b><span>Linux · x86_64 · Ubuntu 24.04+</span></div>
+        <div><b>tar.gz</b><span>Linux · x86_64 · Ubuntu 24.04+ · signed update manifest</span></div>
       </a>
     </div>
     <div class="dl-note animate" data-en='0.4.x deb / rpm / AppImage packages from the previous line remain on the <a href="https://github.com/turinglambdaai/syncpilot/releases" style="color:var(--accent);text-decoration:none;font-weight:500;">releases page</a>.' data-zh='上一代 0.4.x 的 deb / rpm / AppImage 包仍在<a href="https://github.com/turinglambdaai/syncpilot/releases" style="color:var(--accent);text-decoration:none;font-weight:500;">releases 页面</a>。'>0.4.x deb / rpm / AppImage packages from the previous line remain on the <a href="https://github.com/turinglambdaai/syncpilot/releases" style="color:var(--accent);text-decoration:none;font-weight:500;">releases page</a>.</div>

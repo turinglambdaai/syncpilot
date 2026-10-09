@@ -55,6 +55,7 @@ add_executable(RivetHost
   src/main.cpp
   src/settings_window.cpp
   src/toast.cpp
+  src/update_flow.cpp
   "${RIVET_ROOT}/platform/linux/runtime/backend.cpp"
   "${RIVET_ROOT}/platform/linux/system/system_services.cpp"
   "${RIVET_ROOT}/runtime/src/protocol.cpp"

@@ -10,6 +10,7 @@
 #include "dispatch.h"
 #include "system_services.hpp"  // rivet::system — Autostart, Capabilities
 #include "toast.h"
+#include "update_flow.h"
 
 namespace sp {
 namespace {
@@ -31,6 +32,7 @@ struct SettingsUi {
   GtkEntry* device_entry{nullptr};
   GtkSpinButton* port_spin{nullptr};
   GtkButton* save_button{nullptr};
+  GtkButton* check_button{nullptr};
 
   // Filled by get-settings; Save refuses to run before it lands.
   std::optional<rivet_app::Settings> loaded;
@@ -145,6 +147,22 @@ void on_login_toggled(GtkCheckButton* button, gpointer) {
     gtk_check_button_set_active(button, !enabled);
     show_toast(g_ui.overlay, e.what(), true);
   }
+}
+
+// The Updates card delegates every dialog to the shared update flow (its
+// dialogs parent to the main window, so they survive this window closing);
+// the card only keeps its button busy while the check RPC is in flight.
+// The g_window guard makes the callback a no-op once the window (and g_ui
+// with it) is gone — same contract as on_restart_clicked.
+void on_check_updates_clicked(GtkButton*, gpointer) {
+  if (g_ui.api == nullptr) return;
+  gtk_widget_set_sensitive(GTK_WIDGET(g_ui.check_button), FALSE);
+  sp::check_for_updates(g_ui.api, /*force=*/true, /*silent=*/false, []() {
+    if (g_window == nullptr) return;
+    if (g_ui.check_button != nullptr) {
+      gtk_widget_set_sensitive(GTK_WIDGET(g_ui.check_button), TRUE);
+    }
+  });
 }
 
 void on_settings_loaded(Unpacked<rivet_app::Settings>& result);
@@ -264,6 +282,23 @@ GtkWidget* build_desktop_card() {
   return card;
 }
 
+GtkWidget* build_updates_card() {
+  auto* card = make_card(l10n::t("settings.updates").c_str());
+
+  auto* check = gtk_button_new_with_label(
+      l10n::t("settings.checkForUpdates").c_str());
+  g_ui.check_button = GTK_BUTTON(check);
+  row_button(card, g_ui.check_button, G_CALLBACK(on_check_updates_clicked),
+             nullptr);
+
+  auto* note = gtk_label_new(l10n::t("update.cardNote").c_str());
+  gtk_widget_add_css_class(note, "dim-label");
+  gtk_label_set_wrap(GTK_LABEL(note), TRUE);
+  gtk_label_set_xalign(GTK_LABEL(note), 0.0f);
+  card_append(card, note);
+  return card;
+}
+
 GtkWidget* build_about_card() {
   auto* card = make_card(l10n::t("settings.about").c_str());
 
@@ -364,6 +399,7 @@ void open_settings_window(GtkApplication* app, rivet_app::API* api,
   gtk_box_append(GTK_BOX(content), build_daemon_card());
   gtk_box_append(GTK_BOX(content), build_device_card());
   gtk_box_append(GTK_BOX(content), build_desktop_card());
+  gtk_box_append(GTK_BOX(content), build_updates_card());
   gtk_box_append(GTK_BOX(content), build_about_card());
 
   g_ui.save_button = GTK_BUTTON(

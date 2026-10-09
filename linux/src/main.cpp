@@ -47,6 +47,7 @@
 #include "settings_window.h"
 #include "system_services.hpp"  // rivet::system — single-instance lease
 #include "toast.h"
+#include "update_flow.h"
 
 namespace {
 
@@ -84,6 +85,10 @@ struct AppState {
   std::optional<rivet_app::DaemonStatus> last_status;
   std::string proxy_url;  // last handoff URL (opens in a browser without webkit)
   std::string executable;
+
+  // The silent update auto-check runs once per process, after the first
+  // successful handoff; the backend throttles repeat checks to daily.
+  bool update_auto_check_done{false};
 
   // Tray presence and the close-to-tray behavior it enables. The tray lives
   // on the main context; hidden-window keep-alive mirrors the official
@@ -445,6 +450,12 @@ void on_handoff(sp::Unpacked<rivet_app::Handoff> const& result) {
               std::move(unpacked));
         });
   }
+  // Silent daily update auto-check (backend-throttled): only an available
+  // update speaks, via the consent dialog. Never retries after handoffs.
+  if (!g_state.update_auto_check_done && g_state.api != nullptr) {
+    g_state.update_auto_check_done = true;
+    sp::check_for_updates(g_state.api.get(), /*force=*/false, /*silent=*/true);
+  }
 #ifdef HAVE_WEBKIT
   enter_web_view(result.value.proxy_url);
 #else
@@ -668,6 +679,7 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_stack_set_visible_child_name(g_state.stack, "boot");
   gtk_window_present(GTK_WINDOW(window));
 
+  sp::set_update_flow_parent(g_state.window);
   start_backend();
   build_tray();
 }
@@ -675,8 +687,10 @@ void on_activate(GtkApplication* app, gpointer) {
 void on_shutdown(GApplication*, gpointer) {
   g_state.shutting_down.store(true, std::memory_order_release);
   // Drop the tray before the backend goes: its menu callbacks reference
-  // host state and must not fire during teardown.
+  // host state and must not fire during teardown. Same for the update
+  // flow's poll timer, whose RPC must not hit a stopped backend.
   g_state.tray.reset();
+  sp::stop_update_flow();
   if (g_state.startup_thread.joinable()) {
     g_state.startup_thread.join();
   }

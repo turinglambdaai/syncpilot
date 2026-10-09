@@ -36,6 +36,9 @@
    restart-on-crash
    keep-daemon-on-exit
    close-to-tray
+   update-base-url       ; optional updater override; #f = family default
+   last-update-check-at  ; epoch seconds of the last completed check, #f = never
+   rollout-bucket        ; sticky 0..99 staged-rollout assignment, #f = unassigned
    settings-version)     ; schema version of the persisted file
   #:transparent)
 
@@ -55,6 +58,9 @@
    ;; of any UI. Quit stays explicit, via the tray menu.
    #t ; keep-daemon-on-exit
    #t ; close-to-tray
+   #f ; update-base-url (updater uses the embedded default)
+   #f ; last-update-check-at
+   #f ; rollout-bucket
    settings-version-current))
 
 (define (settings-path dir)
@@ -103,7 +109,17 @@
           'restart_on_crash (app-settings-restart-on-crash s)
           'keep_daemon_on_exit (app-settings-keep-daemon-on-exit s)
           'close_to_tray (app-settings-close-to-tray s)
+          'update_base_url (app-settings-update-base-url s)
+          'last_update_check_at (app-settings-last-update-check-at s)
+          'rollout_bucket (app-settings-rollout-bucket s)
           'settings_version (app-settings-settings-version s)))
+
+;; JSON null (and wrong-typed junk) falls back to the field default, so an
+;; old or hand-edited file keeps loading — same serde(default) semantics as
+;; the pre-existing fields.
+(define (present ref name fallback ok?)
+  (define v (ref name fallback))
+  (if (ok? v) v fallback))
 
 (define (jsexpr->settings v)
   (define base (default-settings))
@@ -123,6 +139,11 @@
    (ref 'restart_on_crash (app-settings-restart-on-crash base))
    (ref 'keep_daemon_on_exit (app-settings-keep-daemon-on-exit base))
    (ref 'close_to_tray (app-settings-close-to-tray base))
+   (present ref 'update_base_url #f
+            (lambda (v) (or (not v) (string? v))))
+   (present ref 'last_update_check_at #f exact-integer?)
+   (present ref 'rollout_bucket #f
+            (lambda (v) (and (exact-integer? v) (<= 0 v 99))))
    ;; A file without the stamp predates versioning (everything up to and
    ;; including 0.2.x) and must enter migrate; the container default would
    ;; fill the current version and skip it.

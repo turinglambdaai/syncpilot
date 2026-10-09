@@ -14,7 +14,7 @@
 
 (define settings
   (app-settings "" 38889 "syncpilot" "topsecret" "test-device"
-                #t #t #t #t settings-version-current))
+                #t #t #t #t #f #f #f settings-version-current))
 
 (test-case "build-conf-json has exactly the verified shape"
   (define conf
