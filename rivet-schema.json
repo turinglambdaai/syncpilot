@@ -218,6 +218,13 @@
           }
         },
         {
+          "name": "language",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
           "name": "settings-version",
           "type": {
             "kind": "scalar",
@@ -283,6 +290,13 @@
           "type": {
             "kind": "scalar",
             "name": "Bool"
+          }
+        },
+        {
+          "name": "language",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
           }
         }
       ],

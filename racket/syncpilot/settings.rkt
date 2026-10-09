@@ -24,7 +24,9 @@
          default-device-name
          default-data-dir
          valid-port?
-         validate-port!)
+         validate-port!
+         valid-language?
+         validate-language!)
 
 (struct app-settings
   (rslsync-path          ; explicit binary path; "" means auto-detect
@@ -36,6 +38,9 @@
    restart-on-crash
    keep-daemon-on-exit
    close-to-tray
+   language              ; UI language: "system" | "zh" | "en"; "system" is
+                         ; resolved by the host at startup, because the boot
+                         ; page and tray render before get-settings answers
    update-base-url       ; optional updater override; #f = family default
    last-update-check-at  ; epoch seconds of the last completed check, #f = never
    rollout-bucket        ; sticky 0..99 staged-rollout assignment, #f = unassigned
@@ -58,6 +63,7 @@
    ;; of any UI. Quit stays explicit, via the tray menu.
    #t ; keep-daemon-on-exit
    #t ; close-to-tray
+   "system" ; language: follow the session locale until the user picks one
    #f ; update-base-url (updater uses the embedded default)
    #f ; last-update-check-at
    #f ; rollout-bucket
@@ -109,6 +115,7 @@
           'restart_on_crash (app-settings-restart-on-crash s)
           'keep_daemon_on_exit (app-settings-keep-daemon-on-exit s)
           'close_to_tray (app-settings-close-to-tray s)
+          'language (app-settings-language s)
           'update_base_url (app-settings-update-base-url s)
           'last_update_check_at (app-settings-last-update-check-at s)
           'rollout_bucket (app-settings-rollout-bucket s)
@@ -139,6 +146,7 @@
    (ref 'restart_on_crash (app-settings-restart-on-crash base))
    (ref 'keep_daemon_on_exit (app-settings-keep-daemon-on-exit base))
    (ref 'close_to_tray (app-settings-close-to-tray base))
+   (present ref 'language (app-settings-language base) valid-language?)
    (present ref 'update_base_url #f
             (lambda (v) (or (not v) (string? v))))
    (present ref 'last_update_check_at #f exact-integer?)
@@ -210,3 +218,16 @@
   (unless (valid-port? port)
     (raise-arguments-error who "port must be in 1024..=65535" "port" port))
   port)
+
+(define (valid-language? language)
+  (and (string? language)
+       (member language '("system" "zh" "en"))
+       #t))
+
+(define (validate-language! who language)
+  (unless (valid-language? language)
+    (raise-arguments-error who
+                           "language must be one of system/zh/en"
+                           "language"
+                           language))
+  language)
