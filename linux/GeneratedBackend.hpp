@@ -18,8 +18,8 @@ namespace rivet_app {
 inline constexpr char kModuleName[] = "backend";
 inline constexpr char kEntryName[] = "start";
 inline constexpr char kDisplayName[] = "SyncPilot";
-inline constexpr char kVersion[] = "0.6.0";
-inline constexpr std::int64_t kBuild = 2;
+inline constexpr char kVersion[] = "0.6.1";
+inline constexpr std::int64_t kBuild = 3;
 inline constexpr char kIdentifier[] = "site.jrtx.syncpilot";
 inline constexpr char kReleaseChannel[] = "stable";
 
@@ -58,6 +58,7 @@ struct Settings {
   bool restart_on_crash;
   bool keep_daemon_on_exit;
   bool close_to_tray;
+  std::string language;
   std::int64_t settings_version;
 };
 
@@ -70,6 +71,7 @@ struct SettingsDraft {
   bool restart_on_crash;
   bool keep_daemon_on_exit;
   bool close_to_tray;
+  std::string language;
 };
 
 struct Speeds {
@@ -126,13 +128,13 @@ inline rivet::Value encode_UpdateCheck(UpdateCheck const& v) { rivet::Value::Lis
 inline rivet::Value encode_DaemonPhase(DaemonPhase v) { switch (v) { case DaemonPhase::stopped: return rivet::Value(std::string("stopped")); case DaemonPhase::starting: return rivet::Value(std::string("starting")); case DaemonPhase::running: return rivet::Value(std::string("running")); case DaemonPhase::crashed: return rivet::Value(std::string("crashed")); case DaemonPhase::failed: return rivet::Value(std::string("failed")); } throw std::runtime_error("invalid Rivet enum value"); }
 inline rivet::Value encode_DaemonStatus(DaemonStatus const& v) { rivet::Value::List r; r.reserve(6); r.push_back(encode_DaemonPhase(v.phase)); r.push_back(encode__Optional_Int64_(v.pid)); r.push_back(encode__Optional_Int64_(v.uptime_secs)); r.push_back(encode__Optional_String_(v.binary)); r.push_back(encode__Optional_String_(v.error)); r.push_back(encode_Bool(v.autostart)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_Handoff(Handoff const& v) { rivet::Value::List r; r.reserve(3); r.push_back(encode_String(v.proxy_url)); r.push_back(encode__Optional_String_(v.daemon_version)); r.push_back(encode_DaemonPhase(v.phase)); return rivet::Value(std::move(r)); }
-inline rivet::Value encode_Settings(Settings const& v) { rivet::Value::List r; r.reserve(10); r.push_back(encode_String(v.rslsync_path)); r.push_back(encode_Int64(v.webui_port)); r.push_back(encode_String(v.webui_login)); r.push_back(encode_Bool(v.has_password)); r.push_back(encode_String(v.device_name)); r.push_back(encode_Bool(v.autostart)); r.push_back(encode_Bool(v.restart_on_crash)); r.push_back(encode_Bool(v.keep_daemon_on_exit)); r.push_back(encode_Bool(v.close_to_tray)); r.push_back(encode_Int64(v.settings_version)); return rivet::Value(std::move(r)); }
+inline rivet::Value encode_Settings(Settings const& v) { rivet::Value::List r; r.reserve(11); r.push_back(encode_String(v.rslsync_path)); r.push_back(encode_Int64(v.webui_port)); r.push_back(encode_String(v.webui_login)); r.push_back(encode_Bool(v.has_password)); r.push_back(encode_String(v.device_name)); r.push_back(encode_Bool(v.autostart)); r.push_back(encode_Bool(v.restart_on_crash)); r.push_back(encode_Bool(v.keep_daemon_on_exit)); r.push_back(encode_Bool(v.close_to_tray)); r.push_back(encode_String(v.language)); r.push_back(encode_Int64(v.settings_version)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_Speeds(Speeds const& v) { rivet::Value::List r; r.reserve(2); r.push_back(encode_Int64(v.down_bytes)); r.push_back(encode_Int64(v.up_bytes)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_Void() { return rivet::Value{}; }
 inline rivet::Value encode_InstallResult(InstallResult const& v) { rivet::Value::List r; r.reserve(3); r.push_back(encode_Bool(v.ok)); r.push_back(encode__Optional_String_(v.path)); r.push_back(encode__Optional_String_(v.error)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_TrialResult(TrialResult const& v) { rivet::Value::List r; r.reserve(2); r.push_back(encode_Bool(v.ok)); r.push_back(encode__Optional_String_(v.error)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_PortProbe(PortProbe v) { switch (v) { case PortProbe::compatible: return rivet::Value(std::string("compatible")); case PortProbe::foreign: return rivet::Value(std::string("foreign")); case PortProbe::unreachable: return rivet::Value(std::string("unreachable")); } throw std::runtime_error("invalid Rivet enum value"); }
-inline rivet::Value encode_SettingsDraft(SettingsDraft const& v) { rivet::Value::List r; r.reserve(8); r.push_back(encode_String(v.rslsync_path)); r.push_back(encode_Int64(v.webui_port)); r.push_back(encode_String(v.webui_login)); r.push_back(encode_String(v.device_name)); r.push_back(encode_Bool(v.autostart)); r.push_back(encode_Bool(v.restart_on_crash)); r.push_back(encode_Bool(v.keep_daemon_on_exit)); r.push_back(encode_Bool(v.close_to_tray)); return rivet::Value(std::move(r)); }
+inline rivet::Value encode_SettingsDraft(SettingsDraft const& v) { rivet::Value::List r; r.reserve(9); r.push_back(encode_String(v.rslsync_path)); r.push_back(encode_Int64(v.webui_port)); r.push_back(encode_String(v.webui_login)); r.push_back(encode_String(v.device_name)); r.push_back(encode_Bool(v.autostart)); r.push_back(encode_Bool(v.restart_on_crash)); r.push_back(encode_Bool(v.keep_daemon_on_exit)); r.push_back(encode_Bool(v.close_to_tray)); r.push_back(encode_String(v.language)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_UpdateState(UpdateState const& v) { rivet::Value::List r; r.reserve(5); r.push_back(encode_String(v.phase)); r.push_back(encode_Int64(v.percent)); r.push_back(encode__Optional_String_(v.message)); r.push_back(encode__Optional_String_(v.downloaded_path)); r.push_back(encode__Optional_String_(v.available_version)); return rivet::Value(std::move(r)); }
 
 inline bool decode_Bool(rivet::Value const& v) { if (auto p = std::get_if<bool>(&v.data)) return *p; throw std::runtime_error("Rivet result type mismatch: Bool"); }
@@ -144,13 +146,13 @@ inline UpdateCheck decode_UpdateCheck(rivet::Value const& v) { auto p = std::get
 inline DaemonPhase decode_DaemonPhase(rivet::Value const& v) { auto p = std::get_if<std::string>(&v.data); if (p) { if (*p == "stopped") return DaemonPhase::stopped; if (*p == "starting") return DaemonPhase::starting; if (*p == "running") return DaemonPhase::running; if (*p == "crashed") return DaemonPhase::crashed; if (*p == "failed") return DaemonPhase::failed; } throw std::runtime_error("Rivet result type mismatch: DaemonPhase"); }
 inline DaemonStatus decode_DaemonStatus(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 6) throw std::runtime_error("Rivet result type mismatch: DaemonStatus"); return DaemonStatus{decode_DaemonPhase((*p)[0]), decode__Optional_Int64_((*p)[1]), decode__Optional_Int64_((*p)[2]), decode__Optional_String_((*p)[3]), decode__Optional_String_((*p)[4]), decode_Bool((*p)[5])}; }
 inline Handoff decode_Handoff(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 3) throw std::runtime_error("Rivet result type mismatch: Handoff"); return Handoff{decode_String((*p)[0]), decode__Optional_String_((*p)[1]), decode_DaemonPhase((*p)[2])}; }
-inline Settings decode_Settings(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 10) throw std::runtime_error("Rivet result type mismatch: Settings"); return Settings{decode_String((*p)[0]), decode_Int64((*p)[1]), decode_String((*p)[2]), decode_Bool((*p)[3]), decode_String((*p)[4]), decode_Bool((*p)[5]), decode_Bool((*p)[6]), decode_Bool((*p)[7]), decode_Bool((*p)[8]), decode_Int64((*p)[9])}; }
+inline Settings decode_Settings(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 11) throw std::runtime_error("Rivet result type mismatch: Settings"); return Settings{decode_String((*p)[0]), decode_Int64((*p)[1]), decode_String((*p)[2]), decode_Bool((*p)[3]), decode_String((*p)[4]), decode_Bool((*p)[5]), decode_Bool((*p)[6]), decode_Bool((*p)[7]), decode_Bool((*p)[8]), decode_String((*p)[9]), decode_Int64((*p)[10])}; }
 inline Speeds decode_Speeds(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 2) throw std::runtime_error("Rivet result type mismatch: Speeds"); return Speeds{decode_Int64((*p)[0]), decode_Int64((*p)[1])}; }
 inline void decode_Void(rivet::Value const& v) { if (!std::holds_alternative<std::monostate>(v.data)) throw std::runtime_error("Rivet result type mismatch: Void"); }
 inline InstallResult decode_InstallResult(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 3) throw std::runtime_error("Rivet result type mismatch: InstallResult"); return InstallResult{decode_Bool((*p)[0]), decode__Optional_String_((*p)[1]), decode__Optional_String_((*p)[2])}; }
 inline TrialResult decode_TrialResult(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 2) throw std::runtime_error("Rivet result type mismatch: TrialResult"); return TrialResult{decode_Bool((*p)[0]), decode__Optional_String_((*p)[1])}; }
 inline PortProbe decode_PortProbe(rivet::Value const& v) { auto p = std::get_if<std::string>(&v.data); if (p) { if (*p == "compatible") return PortProbe::compatible; if (*p == "foreign") return PortProbe::foreign; if (*p == "unreachable") return PortProbe::unreachable; } throw std::runtime_error("Rivet result type mismatch: PortProbe"); }
-inline SettingsDraft decode_SettingsDraft(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 8) throw std::runtime_error("Rivet result type mismatch: SettingsDraft"); return SettingsDraft{decode_String((*p)[0]), decode_Int64((*p)[1]), decode_String((*p)[2]), decode_String((*p)[3]), decode_Bool((*p)[4]), decode_Bool((*p)[5]), decode_Bool((*p)[6]), decode_Bool((*p)[7])}; }
+inline SettingsDraft decode_SettingsDraft(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 9) throw std::runtime_error("Rivet result type mismatch: SettingsDraft"); return SettingsDraft{decode_String((*p)[0]), decode_Int64((*p)[1]), decode_String((*p)[2]), decode_String((*p)[3]), decode_Bool((*p)[4]), decode_Bool((*p)[5]), decode_Bool((*p)[6]), decode_Bool((*p)[7]), decode_String((*p)[8])}; }
 inline UpdateState decode_UpdateState(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 5) throw std::runtime_error("Rivet result type mismatch: UpdateState"); return UpdateState{decode_String((*p)[0]), decode_Int64((*p)[1]), decode__Optional_String_((*p)[2]), decode__Optional_String_((*p)[3]), decode__Optional_String_((*p)[4])}; }
 }  // namespace detail
 

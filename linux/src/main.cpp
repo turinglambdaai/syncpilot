@@ -32,7 +32,9 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -119,6 +121,45 @@ std::string executable_path() {
   } catch (...) {
     return {};
   }
+}
+
+// The boot page and the tray render before the backend answers get-settings,
+// so the persisted UI language is read straight from the flat settings file —
+// the same path default-data-dir derives on the backend: $XDG_DATA_HOME or
+// ~/.local/share, then the app identifier. "system" (or junk) follows the
+// session locale: zh-family sessions get zh, everything else en.
+void apply_startup_language() {
+  std::string raw = "system";
+  try {
+    std::filesystem::path const path =
+        std::filesystem::path(g_get_user_data_dir()) /
+        "site.jrtx.syncpilot" / "syncpilot-settings.json";
+    std::ifstream in(path);
+    std::string const json{std::istreambuf_iterator<char>(in),
+                           std::istreambuf_iterator<char>()};
+    std::size_t const key = json.find("\"language\"");
+    if (!json.empty() && key != std::string::npos) {
+      std::size_t const colon = json.find(':', key + std::strlen("\"language\""));
+      if (colon != std::string::npos) {
+        std::size_t const quote = json.find('"', colon + 1);
+        std::size_t const end =
+            quote == std::string::npos ? std::string::npos
+                                       : json.find('"', quote + 1);
+        if (end != std::string::npos) {
+          raw = json.substr(quote + 1, end - quote - 1);
+        }
+      }
+    }
+  } catch (...) {
+    // An unreadable settings file keeps the session-locale default.
+  }
+  if (raw != "zh" && raw != "en") {
+    char const* const* const languages = g_get_language_names();
+    raw = languages != nullptr && std::strncmp(languages[0], "zh", 2) == 0
+              ? "zh"
+              : "en";
+  }
+  l10n::language = raw;
 }
 
 // Rivet keeps runtime/res beside the executable in development and packages.
@@ -715,6 +756,10 @@ void sp::set_close_to_tray_hint(bool enabled) {
 }
 
 int main(int argc, char** argv) {
+  // Before any widget exists: the boot page, tray and settings window all
+  // bake l10n strings at construction time.
+  apply_startup_language();
+
   // Single-instance parity with the old app: a second launch forwards its
   // arguments to the running instance (which presents its window) and exits.
   std::unique_ptr<rivet::system::SingleInstanceLease> lease;

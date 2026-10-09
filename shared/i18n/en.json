@@ -31,6 +31,8 @@
   "settings.willStartAtLogin": "Will start at login",
   "settings.willNotStartAtLogin": "Will not start at login",
   "settings.hideToTray": "Hide to tray on close instead of quitting",
+  "settings.language": "Interface language",
+  "settings.savedRestartForLanguage": "Saved. Restart SyncPilot to apply the interface language.",
   "settings.updates": "Updates",
   "settings.checkForUpdates": "Check for updates",
   "settings.upToDate": "You are up to date (v{version}).",

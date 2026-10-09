@@ -99,11 +99,12 @@
   (check-false settings-err?)
   ;; Settings = [rslsync-path webui-port webui-login has-password device-name
   ;;             autostart restart-on-crash keep-daemon-on-exit close-to-tray
-  ;;             settings-version]
+  ;;             language settings-version]
   (check-equal? (list-ref settings 1) 38889)
   (check-equal? (list-ref settings 2) "syncpilot")
   (check-true (list-ref settings 3) "has-password, but the secret stays hidden")
-  (check-equal? (list-ref settings 9) 2))
+  (check-equal? (list-ref settings 9) "system")
+  (check-equal? (list-ref settings 10) 2))
 
 (test-case "save-settings validates, persists, and never raises"
   (define-values (saved _e1 err1?)
@@ -112,19 +113,28 @@
                 daemon-port                ; webui-port
                 "syncpilot"                ; webui-login
                 "test-device"              ; device-name
-                #t #t #f #t)))             ; autostart/restart/keep/close
+                #t #t #f #t                ; autostart/restart/keep/close
+                "en")))                    ; language
   (check-false err1?)
   (check-equal? (list-ref saved 1) daemon-port)
+  (check-equal? (list-ref saved 9) "en")
   ;; out-of-range ports come back as error frames
   (define-values (_r _e2 err2?)
     (call "save-settings"
           (list (path->string fake-daemon) 80 "syncpilot" "test-device"
-                #t #t #f #t)))
+                #t #t #f #t "en")))
   (check-true err2? "port 80 must be rejected")
+  ;; so do language values outside system/zh/en
+  (define-values (_r3 _e3 err3?)
+    (call "save-settings"
+          (list (path->string fake-daemon) daemon-port "syncpilot" "test-device"
+                #t #t #f #t "fr")))
+  (check-true err3? "language fr must be rejected")
   ;; the accepted settings landed in the temp data dir
   (define stored
     (read-json (open-input-file (build-path data-dir "syncpilot-settings.json"))))
   (check-equal? (hash-ref stored 'webui_port) daemon-port)
+  (check-equal? (hash-ref stored 'language) "en")
   (check-equal? (hash-ref stored 'settings_version) 2))
 
 ;; The generated fake daemon is a full racket process and can be slow to
