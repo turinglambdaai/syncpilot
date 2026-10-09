@@ -31,6 +31,8 @@
   "settings.willStartAtLogin": "将在登录时启动",
   "settings.willNotStartAtLogin": "将不在登录时启动",
   "settings.hideToTray": "关闭窗口时隐藏到托盘而非退出",
+  "settings.language": "界面语言",
+  "settings.savedRestartForLanguage": "已保存。重启 SyncPilot 以应用界面语言。",
   "settings.updates": "更新",
   "settings.checkForUpdates": "检查更新",
   "settings.upToDate": "已是最新版本（v{version}）。",
