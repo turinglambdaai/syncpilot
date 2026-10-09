@@ -4,6 +4,16 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.6.1]
+
+### Fixed
+
+- The update check follows HTTP redirects (rivet#153): GitHub release
+  assets answer with a 302 to their CDN, so every in-app update check
+  failed at signature verification. No app changes; rebuilt on the
+  fixed rivet.
+
+
 ## [0.6.0] - 2026-10-09
 
 ### Added
