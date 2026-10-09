@@ -51,6 +51,7 @@
    [restart-on-crash : Bool]
    [keep-daemon-on-exit : Bool]
    [close-to-tray : Bool]
+   [language : String]
    [settings-version : Int64]))
 
 (define-record SettingsDraft
@@ -61,7 +62,8 @@
    [autostart : Bool]
    [restart-on-crash : Bool]
    [keep-daemon-on-exit : Bool]
-   [close-to-tray : Bool]))
+   [close-to-tray : Bool]
+   [language : String]))
 
 ;; Boot page handoff: where to load the official UI and what came up.
 (define-record Handoff
@@ -148,6 +150,7 @@
    (app-settings-restart-on-crash s)
    (app-settings-keep-daemon-on-exit s)
    (app-settings-close-to-tray s)
+   (app-settings-language s)
    (app-settings-settings-version s)))
 
 (define (trim-or-empty v)
@@ -271,7 +274,10 @@
                  [autostart-daemon (record-ref draft 'autostart)]
                  [restart-on-crash (record-ref draft 'restart-on-crash)]
                  [keep-daemon-on-exit (record-ref draft 'keep-daemon-on-exit)]
-                 [close-to-tray (record-ref draft 'close-to-tray)]))
+                 [close-to-tray (record-ref draft 'close-to-tray)]
+                 [language (validate-language!
+                            'save-settings
+                            (record-ref draft 'language))]))
   ;; Persist via the manager (single source of truth), then keep the
   ;; auth-injecting proxy in sync with the new credentials/port.
   (manager-update-settings! mgr updated)

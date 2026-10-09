@@ -4,6 +4,10 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+### Added
+
+- **UI language setting, follow-system by default**: Settings → Desktop gains a language row offering 跟随系统 / Follow system, 简体中文 and English — the entries render in both scripts regardless of the active UI language, so someone facing an all-zh window (what every install got until now: the language variable existed but nothing ever moved it off zh) can still find and read the row. `system` (the new default) resolves from the session locale at startup — zh-family sessions get zh, everything else en — so first impressions match the user's desktop instead of the author's. The choice persists as `language` in syncpilot-settings.json (pre-existing files fall back per the usual serde(default) semantics, no migration stamp needed) and applies on the next launch; saving it toasts the restart hint, same pattern as the port change.
+
 ## [0.6.1]
 
 ### Fixed

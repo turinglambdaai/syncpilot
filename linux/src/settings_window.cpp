@@ -3,6 +3,7 @@
 #include <gtk/gtk.h>
 
 #include <exception>
+#include <iterator>
 #include <string>
 
 #include "GeneratedBackend.hpp"
@@ -31,6 +32,7 @@ struct SettingsUi {
   GtkCheckButton* login_check{nullptr};
   GtkEntry* device_entry{nullptr};
   GtkSpinButton* port_spin{nullptr};
+  GtkDropDown* language_drop{nullptr};
   GtkButton* save_button{nullptr};
   GtkButton* check_button{nullptr};
 
@@ -41,6 +43,19 @@ struct SettingsUi {
 
 SettingsUi g_ui;
 GtkWindow* g_window{nullptr};
+
+// The language dropdown renders its entries in both scripts regardless of the
+// active UI language: someone facing an all-zh window (the historical
+// default) must still be able to find this row. Order matches kLanguageValues.
+constexpr char const* kLanguageValues[] = {"system", "zh", "en"};
+constexpr char const* kLanguageLabels[] = {"跟随系统 / Follow system",
+                                           "简体中文 / Chinese",
+                                           "English / 英语"};
+
+std::string language_value_at(guint index) {
+  return index < std::size(kLanguageValues) ? kLanguageValues[index]
+                                            : kLanguageValues[0];
+}
 
 // ------------------------------------------------------------- card helpers
 
@@ -182,14 +197,18 @@ void on_save_clicked(GtkButton*, gpointer) {
   draft.keep_daemon_on_exit =
       gtk_check_button_get_active(g_ui.keep_daemon_check);
   draft.close_to_tray = gtk_check_button_get_active(g_ui.close_to_tray_check);
+  draft.language =
+      language_value_at(gtk_drop_down_get_selected(g_ui.language_drop));
 
   auto const port_before = static_cast<gint>(g_ui.loaded->webui_port);
+  auto const language_before = g_ui.loaded->language;
   gtk_widget_set_sensitive(GTK_WIDGET(g_ui.save_button), FALSE);
   (void)g_ui.api->save_settings_async(
-      draft, [port_before](rivet_app::Result<rivet_app::Settings> result) {
+      draft, [port_before, language_before](
+                 rivet_app::Result<rivet_app::Settings> result) {
         auto unpacked = unpack(result);
         post_to_main<Unpacked<rivet_app::Settings>>(
-            [port_before](Unpacked<rivet_app::Settings>& r) {
+            [port_before, language_before](Unpacked<rivet_app::Settings>& r) {
               if (g_window == nullptr) return;
               gtk_widget_set_sensitive(GTK_WIDGET(g_ui.save_button), TRUE);
               if (!r.ok) {
@@ -200,9 +219,16 @@ void on_save_clicked(GtkButton*, gpointer) {
               g_ui.loaded = r.value;
               bool const port_changed =
                   static_cast<gint>(r.value.webui_port) != port_before;
+              bool const language_changed =
+                  r.value.language != language_before;
+              // A language change reaches every widget only on the next
+              // launch; say so instead of pretending it applied in place.
               show_toast(g_ui.overlay,
-                         l10n::t(port_changed ? "settings.savedRestartForPort"
-                                              : "settings.saved"),
+                         l10n::t(language_changed
+                                     ? "settings.savedRestartForLanguage"
+                                     : port_changed
+                                         ? "settings.savedRestartForPort"
+                                         : "settings.saved"),
                          false);
             },
             std::move(unpacked));
@@ -279,6 +305,14 @@ GtkWidget* build_desktop_card() {
   g_ui.close_to_tray_check = check_row(card, l10n::t("settings.hideToTray"));
   gtk_widget_set_sensitive(GTK_WIDGET(g_ui.close_to_tray_check),
                            rivet::system::TrayIcon::available());
+
+  card_append(card, field_label(l10n::t("settings.language")));
+  char const* const entries[] = {kLanguageLabels[0], kLanguageLabels[1],
+                                 kLanguageLabels[2], nullptr};
+  g_ui.language_drop =
+      GTK_DROP_DOWN(gtk_drop_down_new_from_strings(entries));
+  gtk_widget_set_halign(GTK_WIDGET(g_ui.language_drop), GTK_ALIGN_START);
+  card_append(card, GTK_WIDGET(g_ui.language_drop));
   return card;
 }
 
@@ -343,6 +377,11 @@ void on_settings_loaded(Unpacked<rivet_app::Settings>& result) {
                         s.device_name.c_str());
   gtk_spin_button_set_value(g_ui.port_spin,
                             static_cast<gdouble>(s.webui_port));
+  for (guint i = 0; i < std::size(kLanguageValues); ++i) {
+    if (s.language == kLanguageValues[i]) {
+      gtk_drop_down_set_selected(g_ui.language_drop, i);
+    }
+  }
 }
 
 void load_settings() {
