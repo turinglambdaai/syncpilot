@@ -30,9 +30,17 @@ SyncPilot is built on [Rivet](https://github.com/turinglambdaai/rivet): one Rack
 
 ## Install
 
-Grab `syncpilot-<version>-linux-x64.tar.gz` from [Releases](https://github.com/turinglambdaai/syncpilot/releases), unpack it, and run `RivetHost` (Ubuntu 24.04+ ships the required GTK 4 / WebKitGTK 6.0; everything else is bundled or base-system). Each release ships a signed `update-stable.json` manifest and a `.sha256` checksum; after installing, SyncPilot keeps itself current — it checks daily and offers verified downloads in-app.
+Grab `syncpilot-<version>-linux-x64.tar.gz` from [Releases](https://github.com/turinglambdaai/syncpilot/releases), unpack it, and run `RivetHost` (Ubuntu 24.04+ ships the required GTK 4 / WebKitGTK 6.0; everything else is bundled or base-system). That tarball is the only artifact — SyncPilot is Linux x64 only, no deb/rpm/AppImage yet. Each release ships the tarball with a `<tarball>.sha256` checksum sidecar and the Ed25519-signed `update-stable.json` manifest.
 
 If the official `rslsync` binary is not found (auto-detection covers `~/.local/bin`, `/usr/bin`, `/usr/local/bin`, `/opt/resilio-sync`, `$PATH`), SyncPilot offers to download it from Resilio's CDN on first launch (sha256-pinned, installed to `~/.local/bin`) — or install it yourself and point SyncPilot at it in **Settings**.
+
+## Updates
+
+SyncPilot has an in-app updater; the full contract lives in [docs/UPDATE.md](docs/UPDATE.md). In short:
+
+- it checks the signed `update-stable.json` feed **once a day** (silent startup auto-check, throttled to one check per 24 h; a manual check in the UI always runs),
+- an available update is downloaded **in-app** and its size and SHA-256 are verified against the signed manifest before it is offered,
+- **applying it is manual**: extract the new tar.gz over the app directory and restart `RivetHost` — rslsync data and settings are never touched.
 
 ## Building from source
 

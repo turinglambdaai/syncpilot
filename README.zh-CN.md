@@ -30,9 +30,17 @@ SyncPilot 以 [Rivet](https://github.com/turinglambdaai/rivet) 构建：一份 R
 
 ## 安装
 
-从 [Releases](https://github.com/turinglambdaai/syncpilot/releases) 下载 `syncpilot-<版本>-linux-x64.tar.gz`，解压后运行 `RivetHost`（Ubuntu 24.04+ 自带所需的 GTK 4 / WebKitGTK 6.0；其余依赖已捆绑或属系统基础库）。每个发布都带签名的 `update-stable.json` manifest 和 `.sha256` 校验文件；装好之后 SyncPilot 会保持自我更新——每天检查一次，应用内提供已验证的下载。
+从 [Releases](https://github.com/turinglambdaai/syncpilot/releases) 下载 `syncpilot-<版本>-linux-x64.tar.gz`，解压后运行 `RivetHost`（Ubuntu 24.04+ 自带所需的 GTK 4 / WebKitGTK 6.0；其余依赖已捆绑或属系统基础库）。这个 tar.gz 是唯一的产物——SyncPilot 仅面向 Linux x64，暂无 deb/rpm/AppImage。每个发布都带 tar.gz 的 `.sha256` 校验文件和 Ed25519 签名的 `update-stable.json` manifest。
 
 若未检测到官方 `rslsync` 二进制（自动探测覆盖 `~/.local/bin`、`/usr/bin`、`/usr/local/bin`、`/opt/resilio-sync` 和 `$PATH`），SyncPilot 会在首次启动时提供从 Resilio CDN 一键下载（sha256 校验，装入 `~/.local/bin`）；也可以自行安装后在**设置**里指定路径。
+
+## 更新
+
+SyncPilot 有应用内更新器，完整契约见 [docs/UPDATE.md](docs/UPDATE.md)。简述：
+
+- **每天静默检查一次**签名的 `update-stable.json` feed（启动时后台自动检查，24 小时节流；UI 里手动检查不受限），
+- 有可用更新时**应用内下载**，先对照签名 manifest 校验大小与 SHA-256 再交付，
+- **应用更新是手动步骤**：把新 tar.gz 解压覆盖应用目录后重启 `RivetHost`——rslsync 数据与设置绝不被触碰。
 
 ## 从源码构建
 
