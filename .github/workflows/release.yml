@@ -73,19 +73,14 @@ jobs:
           raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
           raco pkg install --auto --no-docs crypto
 
-      # The tag is the release's promise; rivet.rktd is what the binary
-      # reports. They must agree — and the CHANGELOG must document the
-      # version — before anything is built.
+      # The tag is the release's promise; VERSION / rivet.rktd / the
+      # updater's embedded identity must all agree — and the CHANGELOG must
+      # document the version — before anything is built.
       - name: Check tag matches the declared version and CHANGELOG
         run: |
           set -euo pipefail
+          bash scripts/check-release-version.sh "${{ github.ref_name }}"
           tag_version="${GITHUB_REF_NAME#v}"
-          declared="$(sed -n 's/.*(version . "\([0-9][0-9.]*\)").*/\1/p' rivet.rktd)"
-          if [ "$tag_version" != "$declared" ]; then
-            echo "tag ${GITHUB_REF_NAME} but rivet.rktd declares ${declared}" >&2
-            echo "bump rivet.rktd (and CHANGELOG.md) before tagging." >&2
-            exit 1
-          fi
           grep -q "^## \[${tag_version}\]" CHANGELOG.md || {
             echo "CHANGELOG.md has no '## [${tag_version}]' section" >&2
             exit 1

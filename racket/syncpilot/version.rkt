@@ -2,8 +2,9 @@
 
 ;; Release identity duplicated from rivet.rktd. The packaged app cannot read
 ;; the project file at runtime, so the updater embeds these constants. Keep
-;; them in sync with rivet.rktd (the release checklist re-checks the tag,
-;; rivet.rktd and CHANGELOG together).
+;; them in sync with rivet.rktd — scripts/check-release-version.sh enforces
+;; VERSION == rivet.rktd == app-version in CI and at release time (v0.6.1
+;; shipped with 0.6.0 here; the gate exists so that cannot recur).
 
 (provide app-version
          app-build
@@ -14,8 +15,8 @@
          update-public-key-b64
          default-update-base-url)
 
-(define app-version "0.6.0")
-(define app-build 2)
+(define app-version "0.6.1")
+(define app-build 3)
 (define app-identifier "site.jrtx.syncpilot")
 (define app-channel 'stable)
 (define app-display-name "SyncPilot")
