@@ -145,10 +145,13 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           test -f "dist/syncpilot-${version}-linux-x64.tar.gz"
           test -f dist/update-stable.json
-          sha256sum "dist/syncpilot-${version}-linux-x64.tar.gz" \
+          # hash under dist/ so the checksum file carries the bare asset
+          # name and `sha256sum --check` works beside the downloaded files
+          (cd dist && sha256sum "syncpilot-${version}-linux-x64.tar.gz") \
             > "syncpilot-${version}-linux-x64.tar.gz.sha256"
           sha256sum --check "syncpilot-${version}-linux-x64.tar.gz.sha256" \
-            | grep -q OK
+            && test "$(sha256sum "dist/syncpilot-${version}-linux-x64.tar.gz" | awk '{print $1}')" \
+                 = "$(awk '{print $1}' "syncpilot-${version}-linux-x64.tar.gz.sha256")"
           mv "dist/syncpilot-${version}-linux-x64.tar.gz" .
           mv dist/update-stable.json .
           ls -la
