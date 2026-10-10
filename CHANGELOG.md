@@ -4,6 +4,22 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.7.0]
+
+### Added
+
+- **Native Linux packaging, two architectures**: releases now ship `deb` and `AppImage` installers beside the `tar.gz` for both `linux-x64` and `linux-arm64` (arm64 builds on GitHub's `ubuntu-24.04-arm` with rivet's cached embeddable Racket CS; the backend's `crypto` dependency is installed into that minimal runtime explicitly). The AppImage carries its own GTK4 dependency closure so it runs on distributions older than the build image; the deb installs under `/opt/syncpilot` with a desktop entry and the branded icon (`assets/icon-512.png`, scaled from the app icon). Every release also publishes a combined `SHA256SUMS`
+- The portable zip that rides along with every installer since rivet 0.6.1 is now part of the published asset set too
+
+### Fixed
+
+- **The updater's artifact download follows HTTP redirects** ([#1](https://github.com/turinglambdaai/syncpilot/issues/1)): the hand-rolled `get-pure-port` call saved the empty 302 body GitHub serves before the CDN redirect and failed the signed size/SHA-256 check — the same trap rivet#153 fixed for the manifest fetch, which is why the check succeeded and the download then broke. Covered by a loopback regression test that 302s onto a real payload. Note for 0.6.1 users: the broken downloader ships in your build, so the in-app update to 0.7.0 fails at download — update manually this one time; from 0.7.0 on, auto-update works
+
+### Changed
+
+- CI and release pin rivet to 0.6.1 (`410fc7c`) — the first release line with native Linux `deb`/`AppImage` packaging (`linux-formats` in rivet.rktd) and family-named portable zips
+- `update-stable.json` is now signed in the release publish job (`scripts/make-update-manifest.sh`, same Ed25519 key and key id `syncpilot-2026-10`) with one `targz` artifact per architecture and versioned download URLs — same schema-1 manifest contract 0.6.1 clients already verify; rivet 0.6.1's built-in manifest points at the portable zip instead, which the updater does not consume
+
 ## [0.6.1]
 
 ### Fixed
