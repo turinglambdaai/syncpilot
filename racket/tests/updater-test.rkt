@@ -15,6 +15,7 @@
          racket/file
          racket/list
          racket/path
+         racket/tcp
          "../syncpilot/settings.rkt"
          "../syncpilot/updater.rkt"
          "../syncpilot/version.rkt")
@@ -225,3 +226,77 @@
   (check-equal? app-identifier "site.jrtx.syncpilot")
   (check-equal? app-channel 'stable)
   (check-not-false (regexp-match? #px"^[0-9]+\\.[0-9]+\\.[0-9]+$" app-version)))
+
+(test-case "artifact download follows HTTP redirects"
+  ;; syncpilot#1: GitHub release asset URLs answer with a 302 to their CDN;
+  ;; the hand-rolled downloader saved the empty redirect body and failed the
+  ;; signed size/SHA-256 check. A loopback server that 302s onto the real
+  ;; artifact reproduces that shape end to end (plain HTTP is fine —
+  ;; download-with-progress! only refuses nothing net/url accepts).
+  (reset-update-state!)
+  (define tmp (make-temporary-file "syncpilot-redirect-~a" 'directory))
+  (define payload (make-bytes 90000 5))
+  (define payload-path (build-path tmp "syncpilot-0.7.0-linux-x64.tar.gz"))
+  (call-with-output-file payload-path
+    (lambda (o) (write-bytes payload o)) #:exists 'truncate/replace)
+
+  ;; claim an ephemeral-ish port by trial binding
+  (define-values (listener port)
+    (let loop ([candidate-port 24610])
+      (with-handlers ([exn:fail:network? (lambda (_) (loop (add1 candidate-port)))])
+        (define l (tcp-listen candidate-port 4 #t))
+        (values l candidate-port))))
+
+  ;; one server thread, two sequential connections: /redirect 302s onto
+  ;; /artifact, which serves the payload bytes
+  (define server
+    (thread
+     (lambda ()
+       (let accept-loop ()
+         (define-values (in out) (tcp-accept listener))
+         (with-handlers ([exn:fail? void])
+           (define request-line
+             (let read-head ([first #f])
+               (define line (read-line in 'return-linefeed))
+               (cond
+                 [(eof-object? line) (or first "GET / HTTP/1.1")]
+                 [(string=? line "") (or first "GET / HTTP/1.1")]
+                 [else (read-head (or first line))])))
+           (cond
+             [(regexp-match? #rx"^GET /redirect" request-line)
+              (fprintf out
+                       "HTTP/1.0 302 Found\r\nLocation: http://127.0.0.1:~a/artifact\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                       port)]
+             [else
+              (fprintf out
+                       "HTTP/1.0 200 OK\r\nContent-Length: ~a\r\nConnection: close\r\n\r\n"
+                       (bytes-length payload))
+              (write-bytes payload out)])
+           (flush-output out)
+           (close-input-port in)
+           (close-output-port out))
+         (accept-loop)))))
+
+  (define candidate
+    (update-candidate #f
+                      (update-artifact 'linux 'x64
+                                       (format "http://127.0.0.1:~a/redirect" port)
+                                       (sha256-file/hex payload-path)
+                                       (bytes-length payload)
+                                       'targz '())))
+  (define config
+    (updater-config app-identifier "0.6.0" 'stable 'linux 'x64
+                    (datum->pk-key
+                     (base64-string->bytes update-public-key-b64)
+                     'SubjectPublicKeyInfo)
+                    "test-key" 0
+                    (* 4 (bytes-length payload))))
+  (define destination (build-path tmp "updates" "SyncPilot-0.7.0.tar.gz"))
+  (check-equal? (download-with-progress! config candidate destination)
+                destination)
+  (check-equal? (file->bytes destination) payload)
+  (check-equal? (hash-ref (update-state-snapshot) 'percent) 100)
+
+  (kill-thread server)
+  (tcp-close listener)
+  (delete-directory/files tmp))

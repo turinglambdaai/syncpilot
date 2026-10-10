@@ -36,6 +36,7 @@
          manifest-url
          destination-path
          copy-with-progress!
+         download-with-progress!
          update-state-snapshot
          reset-update-state!
          perform-check!
@@ -236,9 +237,14 @@
                    (lambda (e)
                      (when (file-exists? temporary) (delete-file temporary))
                      (raise e))])
+    ;; #:redirections is load-bearing: GitHub release asset URLs answer with
+    ;; a 302 to their CDN (syncpilot#1, the hand-rolled twin of rivet#153),
+    ;; and net/url does not follow redirects by default — the download used
+    ;; to save the empty 302 body and fail the signed size/SHA-256 check.
     (define in
       (get-pure-port (string->url (update-artifact-url artifact))
-                     '("User-Agent: SyncPilot-Updater/1")))
+                     '("User-Agent: SyncPilot-Updater/1")
+                     #:redirections 10))
     (dynamic-wind
       void
       (lambda ()
