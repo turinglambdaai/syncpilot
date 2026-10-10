@@ -141,7 +141,9 @@ jobs:
             KEY_DER="$RUNNER_TEMP/update-ed25519-private.der"
             printf '%s' "$UPDATE_ED25519_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
             scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_DER"
-            update_asset="dist/update-stable.json"
+            # gh release create resolves file args from their final working
+            # directory (dist/), so the manifest rides under its bare name.
+            update_asset="update-stable.json"
           else
             echo "::warning::UPDATE_ED25519_PRIVATE_KEY_B64 not set — release ships without update-stable.json"
           fi
