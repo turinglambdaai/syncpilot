@@ -155,8 +155,11 @@ jobs:
           cd dist
           for f in *.sha256; do [ -s "$f" ] || rm -f "$f"; done
           cat *.sha256 > SHA256SUMS
+          # every file a sidecar or SHA256SUMS describes must ship too, so
+          # `sha256sum -c SHA256SUMS` resolves against the release alone
           gh release create "$GITHUB_REF_NAME" \
             --title "SyncPilot ${VERSION}" \
             --notes-file /tmp/notes.md \
             *.tar.gz *.deb *.AppImage *.zip \
+            *.sbom.cdx.json *-THIRD_PARTY_NOTICES.txt \
             *.sha256 SHA256SUMS $update_asset
