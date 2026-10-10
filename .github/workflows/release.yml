@@ -6,77 +6,58 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 # Rivet is pinned: builds must be reproducible, and a framework commit is
-# only bumped deliberately (it is the API the host compiles against —
-# f37908f is the first commit with rivet::system::TrayIcon, needed by the
-# Linux host's tray). To bump: point RIVET_PKG_SOURCE at the new commit,
-# rebuild, and re-smoke.
+# only bumped deliberately. 410fc7c is rivet 0.6.1 — the first release line
+# with native Linux deb/AppImage packaging (linux-formats in rivet.rktd),
+# family-named portable zips, and hardened update artifacts. To bump: point
+# RIVET_PKG_SOURCE / RIVET_COMMIT / the setup-embed-racket ref at the new
+# commit, rebuild, and re-smoke.
 env:
-  RIVET_PKG_SOURCE: "https://github.com/turinglambdaai/rivet.git#f37908f"
+  RIVET_PKG_SOURCE: "https://github.com/turinglambdaai/rivet.git#410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6"
+  RIVET_COMMIT: "410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6"
+
 jobs:
-  linux-release:
-    name: Linux x64 release
-    runs-on: ubuntu-latest
+  linux:
+    name: Linux (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache embeddable Racket CS 9.3
-        id: cache-racket-embed
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/racket-embed
-          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
-          save-always: true
-
-      - name: Build Racket CS 9.3 from pinned source
-        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
+      - name: Set up embeddable Racket CS
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6
+      # The minimal embeddable runtime the action provisions carries only
+      # the base distribution: crypto (the updater + rivet/distribution
+      # dependency) must be added explicitly. net/url and openssl ship in
+      # the minimal set.
+      - name: Install backend packages into the embeddable runtime
+        run: raco pkg install --auto --no-docs crypto
+      - name: Install pinned Rivet
         run: |
           set -euo pipefail
-          archive="$RUNNER_TEMP/racket-minimal-9.3-src-builtpkgs.tgz"
-          source_root="$RUNNER_TEMP/racket-9.3"
-          build_root="$RUNNER_TEMP/racket-embed-build"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-
-          curl --fail --location --retry 3 \
-            --output "$archive" \
-            https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-src-builtpkgs.tgz
-          echo "3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295  $archive" |
-            sha256sum --check
-          tar -xzf "$archive" -C "$RUNNER_TEMP"
-          mkdir -p "$build_root"
-          cd "$build_root"
-          "$source_root/src/configure" --prefix="$embed_prefix"
-          make -j4
-          make install
-
-      - name: Install system dependencies
+          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
+          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+      - name: Install GTK4, WebKitGTK and packaging tooling
         run: |
-          sudo apt-get update -qq
+          sudo apt-get update
           sudo apt-get install --yes \
-            libgtk-4-dev \
-            libwebkitgtk-6.0-dev \
-            libsecret-1-dev \
-            liblz4-dev \
-            zlib1g-dev \
-            libncurses-dev \
+            libgtk-4-dev libwebkitgtk-6.0-dev libsecret-1-dev \
+            liblz4-dev zlib1g-dev libncurses-dev \
+            cmake ninja-build pkg-config file desktop-file-utils \
             xvfb
-
-      - name: Install rivet (upstream main) and crypto into the embed Racket
-        run: |
-          set -euo pipefail
-          echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
-          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          # net/url and openssl (needed by the rslsync installer's HTTPS
-          # download) ship inside the minimal distribution; crypto is the
-          # rivet/distribution dependency the online updater adds to the
-          # backend closure.
-          raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
-          raco pkg install --auto --no-docs crypto
-
       # The tag is the release's promise; VERSION / rivet.rktd / the
       # updater's embedded identity must all agree — and the CHANGELOG must
       # document the version — before anything is built.
-      - name: Check tag matches the declared version and CHANGELOG
+      - name: Version preflight (VERSION == rivet.rktd == updater == tag == CHANGELOG)
         run: |
           set -euo pipefail
           bash scripts/check-release-version.sh "${{ github.ref_name }}"
@@ -85,81 +66,95 @@ jobs:
             echo "CHANGELOG.md has no '## [${tag_version}]' section" >&2
             exit 1
           }
-
-      - name: Build backend bundle and host
-        run: |
-          set -euo pipefail
-          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-          racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
-          racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
-          petite_source="$(find "$embed_prefix" -name petite.boot -print -quit)"
-          export RIVET_RACKET_INCLUDE="$racket_include"
-          export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
-          export RIVET_RACKET_LIBRARY="$racket_library"
-          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
-          raco rivet doctor
-          raco rivet build
-          test -x .rivet/stage/RivetHost
-          ldd .rivet/stage/RivetHost | grep -qi webkit
-
-      # `raco rivet release` = package + verify (with rivet's launch smoke)
-      # + signed installer + SBOM + the Ed25519-signed update manifest.
-      # --development skips production platform signing (none exists on
-      # Linux; installer trust is the signed manifest + SHA-256), but the
-      # update manifest still demands its own key. The smoke boots the real
-      # web view, where WebKit's bwrap sandbox hits the runner's userns
-      # restriction (see the CI workflow) — real desktops sandbox fine.
-      - name: Package, verify and sign (rivet release)
+      # tar.gz (the update payload) + deb + AppImage + portable zip + SBOM
+      # + notices, launch smoke included. APPIMAGE_EXTRACT_AND_RUN lets
+      # appimagetool (fetched by rivet, checksum-pinned) run without FUSE;
+      # the WebKit flags cover the smoke on the runner (see ci.yml — real
+      # desktops sandbox fine).
+      - name: Release (tar.gz + deb + AppImage + portable zip)
         env:
-          RIVET_UPDATE_BASE_URL: https://github.com/turinglambdaai/syncpilot/releases/download/${{ github.ref_name }}
-          RIVET_UPDATE_KEY_ID: syncpilot-2026-10
-          RIVET_UPDATE_PRIVATE_KEY_B64: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY_B64 }}
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: '1'
+          GTK_A11Y: none
+        run: xvfb-run -a raco rivet release --without-updates --development
+      - name: Family naming + checksums
         run: |
           set -euo pipefail
-          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-          racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
-          racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
-          petite_source="$(find "$embed_prefix" -name petite.boot -print -quit)"
-          export RIVET_RACKET_INCLUDE="$racket_include"
-          export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
-          export RIVET_RACKET_LIBRARY="$racket_library"
-          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
-          export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
-          export GTK_A11Y=none
-          KEY_DER="$(mktemp -d)/update-ed25519-private.der"
-          printf '%s' "$RIVET_UPDATE_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
-          export RIVET_UPDATE_PRIVATE_KEY="$KEY_DER"
-          xvfb-run -a raco rivet release --development
-          rm -f "$KEY_DER"
+          VERSION="${GITHUB_REF_NAME#v}"
+          ARCH="${{ matrix.arch }}"
+          cd dist
+          # rivet 0.6.1 names every installer in family form already
+          # (deb says amd64 on this leg); only the SBOM and notices lack
+          # the architecture.
+          mv sbom.cdx.json "syncpilot-${VERSION}-linux-${ARCH}.sbom.cdx.json"
+          mv THIRD_PARTY_NOTICES.txt "syncpilot-${VERSION}-linux-${ARCH}-THIRD_PARTY_NOTICES.txt"
+          for f in syncpilot-*; do
+            case "$f" in
+              *.sha256) ;;
+              *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256" ;;
+            esac
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/syncpilot-*
 
-      - name: Collect release assets
+  publish:
+    name: Publish
+    needs: [linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Install pinned Rivet
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          test -f "dist/syncpilot-${version}-linux-x64.tar.gz"
-          test -f dist/update-stable.json
-          # hash under dist/ so the checksum file carries the bare asset
-          # name and `sha256sum --check` works beside the downloaded files
-          (cd dist && sha256sum "syncpilot-${version}-linux-x64.tar.gz") \
-            > "syncpilot-${version}-linux-x64.tar.gz.sha256"
-          sha256sum --check "syncpilot-${version}-linux-x64.tar.gz.sha256" \
-            && test "$(sha256sum "dist/syncpilot-${version}-linux-x64.tar.gz" | awk '{print $1}')" \
-                 = "$(awk '{print $1}' "syncpilot-${version}-linux-x64.tar.gz.sha256")"
-          mv "dist/syncpilot-${version}-linux-x64.tar.gz" .
-          mv dist/update-stable.json .
-          ls -la
-
-      - name: Create the GitHub release
+          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
+          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Sign the update feed and publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_ED25519_PRIVATE_KEY_B64: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY_B64 }}
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          mv artifacts/linux-x64/* artifacts/linux-arm64/* dist/
+          # The update feed keeps the 0.6.1 contract: one signed
+          # update-stable.json whose artifacts are the per-arch tar.gz
+          # payloads the updater downloads, signed with the long-lived
+          # syncpilot-2026-10 key. rivet 0.6.1's built-in manifest points
+          # at the portable zip instead, which the SyncPilot updater does
+          # not consume. Missing secret → warn and publish without it.
+          update_asset=""
+          if [[ -n "${UPDATE_ED25519_PRIVATE_KEY_B64:-}" ]]; then
+            KEY_DER="$RUNNER_TEMP/update-ed25519-private.der"
+            printf '%s' "$UPDATE_ED25519_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
+            scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_DER"
+            update_asset="dist/update-stable.json"
+          else
+            echo "::warning::UPDATE_ED25519_PRIVATE_KEY_B64 not set — release ships without update-stable.json"
+          fi
+          awk -v header="## [${VERSION}]" '
+            index($0, header) == 1 {on=1; next}
+            on && /^## / {exit}
+            on {print}
+          ' CHANGELOG.md > /tmp/notes.md
+          cd dist
+          for f in *.sha256; do [ -s "$f" ] || rm -f "$f"; done
+          cat *.sha256 > SHA256SUMS
           gh release create "$GITHUB_REF_NAME" \
-            --title "SyncPilot ${version}" \
-            --generate-notes \
-            "syncpilot-${version}-linux-x64.tar.gz" \
-            "syncpilot-${version}-linux-x64.tar.gz.sha256" \
-            update-stable.json
+            --title "SyncPilot ${VERSION}" \
+            --notes-file /tmp/notes.md \
+            *.tar.gz *.deb *.AppImage *.zip \
+            *.sha256 SHA256SUMS $update_asset
