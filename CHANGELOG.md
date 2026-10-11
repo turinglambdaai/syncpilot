@@ -4,6 +4,12 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.8.0]
+
+### Added
+
+- **RPM packages for both Linux architectures** (`syncpilot-<version>-<build>-linux-x86_64.rpm`, `...-aarch64.rpm`), built by rivet's native rpmbuild path from the same payload as the deb and AppImage — the Linux set now matches the family benchmark (taskly) format-for-format: deb + rpm + AppImage + tar.gz + zip per architecture. Each rpm ships with a `.sha256` sidecar and rides the same `SHA256SUMS`
+
 ## [0.7.0]
 
 ### Added

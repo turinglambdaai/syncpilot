@@ -52,7 +52,7 @@ jobs:
           sudo apt-get install --yes \
             libgtk-4-dev libwebkitgtk-6.0-dev libsecret-1-dev \
             liblz4-dev zlib1g-dev libncurses-dev \
-            cmake ninja-build pkg-config file desktop-file-utils \
+            cmake ninja-build pkg-config file desktop-file-utils rpm \
             xvfb
       # The tag is the release's promise; VERSION / rivet.rktd / the
       # updater's embedded identity must all agree — and the CHANGELOG must
@@ -66,12 +66,13 @@ jobs:
             echo "CHANGELOG.md has no '## [${tag_version}]' section" >&2
             exit 1
           }
-      # tar.gz (the update payload) + deb + AppImage + portable zip + SBOM
+      # tar.gz (the update payload) + deb + rpm + AppImage + portable zip
+      # + SBOM
       # + notices, launch smoke included. APPIMAGE_EXTRACT_AND_RUN lets
       # appimagetool (fetched by rivet, checksum-pinned) run without FUSE;
       # the WebKit flags cover the smoke on the runner (see ci.yml — real
       # desktops sandbox fine).
-      - name: Release (tar.gz + deb + AppImage + portable zip)
+      - name: Release (tar.gz + deb + rpm + AppImage + portable zip)
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'
           WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: '1'
@@ -160,6 +161,6 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "SyncPilot ${VERSION}" \
             --notes-file /tmp/notes.md \
-            *.tar.gz *.deb *.AppImage *.zip \
+            *.tar.gz *.deb *.rpm *.AppImage *.zip \
             *.sbom.cdx.json *-THIRD_PARTY_NOTICES.txt \
             *.sha256 SHA256SUMS $update_asset
