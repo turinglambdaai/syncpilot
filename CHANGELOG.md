@@ -6,7 +6,7 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ### Added
 
-- **Desktop integration bridge for the official UI** (`window.btsync`): the official client injects this object into its embedded web view and the UI routes every desktop behavior through it — double-clicking a synced folder opens the file manager at that folder (until now an explanation dialog appeared instead), adding a folder uses the native directory chooser, share links and docs hand off to the browser, notifications leave the page, and copy buttons reach the real clipboard. Implemented as a document-start user script (loopback origins only) plus one script message handler; the WebKit user agent carries the official `SyncWebKitWebView` marker so the UI's WebKit code path engages.
+- **Desktop integration bridge for the official UI** (`window.btsync`): the official client injects this object into its embedded web view and the UI routes every desktop behavior through it — double-clicking a synced folder opens the file manager at that folder (until now an explanation dialog appeared instead), adding a folder uses the native directory chooser, share links and docs hand off to the browser, notifications leave the page, and copy buttons reach the real clipboard. A web-process extension defines the object in the page world at document start (UserContentManager user scripts miss the first document on WebKitGTK 2.52), calls ride a custom `syncpilot-bridge://` scheme whose handler does the native work, and the WebKit user agent carries the official `SyncWebKitWebView` marker so the UI's WebKit code path engages.
 
 ## [0.8.0]
 

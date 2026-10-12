@@ -51,6 +51,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes \
             libgtk-4-dev libwebkitgtk-6.0-dev libsecret-1-dev \
+            libjson-glib-dev \
             liblz4-dev zlib1g-dev libncurses-dev \
             cmake ninja-build pkg-config file desktop-file-utils rpm \
             xvfb
