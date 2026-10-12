@@ -497,6 +497,16 @@ void start_handoff() {
 void enter_web_view(std::string const& url) {
   g_state.proxy_url = url;
   g_state.state = UiState::Web;
+  if (g_state.web_view == nullptr) {
+    // The web view is created at handoff, not at activation: the bridge
+    // user scripts must land while the web process still counts as fresh,
+    // and create-then-load in one go is the sequence observed to inject
+    // them reliably (activation-time creation sits unmapped through the
+    // whole backend boot, which lost the scripts on WebKitGTK 2.52).
+    g_state.web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
+    gtk_stack_add_named(g_state.stack, GTK_WIDGET(g_state.web_view), "web");
+    sp::install_js_bridge(g_state.web_view, g_state.window);
+  }
   gtk_stack_set_visible_child_name(g_state.stack, "web");
   webkit_web_view_load_uri(g_state.web_view, url.c_str());
   update_banner();
@@ -668,14 +678,8 @@ void on_activate(GtkApplication* app, gpointer) {
   g_state.stack = GTK_STACK(stack);
 
   gtk_stack_add_named(g_state.stack, build_boot_page(), "boot");
-#ifdef HAVE_WEBKIT
-  g_state.web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
-  gtk_stack_add_named(g_state.stack, GTK_WIDGET(g_state.web_view), "web");
-  // The official-UI desktop bridge (window.btsync): double-clicking a
-  // synced folder, native choosers, notifications, clipboard. Must land
-  // before the first load so app.js sees the object at init.
-  sp::install_js_bridge(g_state.web_view, GTK_WINDOW(window));
-#endif
+  // The web view (and with it the official-UI desktop bridge) is created
+  // lazily in enter_web_view at handoff time.
   build_banner();
 
   // Default action for bridge notifications: bring the window back.

@@ -9,10 +9,12 @@
 // folder opens an explanation dialog instead of the folder itself, adding a
 // folder uses the HTML picker, and notifications stay in-page.
 //
-// install_js_bridge wires the same contract onto our WebKitWebView: a
-// document-start user script defines window.btsync, every call funnels
-// through btsync.call(method, args) into a script message handler, and the
-// native side answers by resolving the JS-side promise.
+// install_js_bridge wires the same contract onto our WebKitWebView: a web
+// process extension (linux/webext) defines window.btsync in the page world
+// at document start — UserContentManager scripts cannot (they miss the
+// first document on WebKitGTK 2.52) — every call funnels through
+// btsync.call(method, args) into the "syncpilot-bridge://" URI scheme, and
+// this side does the native work and finishes each request.
 #pragma once
 
 #ifdef HAVE_WEBKIT

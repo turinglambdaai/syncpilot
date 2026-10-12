@@ -30,6 +30,9 @@ find_package(ZLIB REQUIRED)
 find_library(LZ4_LIBRARY NAMES lz4 REQUIRED)
 pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET gio-2.0)
+# The desktop JS bridge parses the calls the embedded official UI posts to
+# the syncpilot-bridge:// scheme handler (see src/js_bridge.cpp).
+pkg_check_modules(JSON_GLIB REQUIRED IMPORTED_TARGET json-glib-1.0)
 # The Secret Service adapter is compiled whenever libsecret is present; the
 # capability then reports itself at runtime based on service availability.
 pkg_check_modules(LIBSECRET IMPORTED_TARGET libsecret-1)
@@ -67,6 +70,18 @@ if(LIBSECRET_FOUND)
 endif()
 if(WEBKIT_FOUND)
   target_compile_definitions(RivetHost PRIVATE HAVE_WEBKIT=1)
+  # The web-process extension injects the official-UI desktop bridge into
+  # the page world (UserContentManager scripts miss the first document on
+  # WebKitGTK 2.52). Staged into app/webext where the UI process looks for
+  # it; the stage wipe happens before CMake runs, so this copy survives.
+  add_library(SyncpilotWebExtension MODULE webext/syncpilot_extension.cpp)
+  target_link_libraries(SyncpilotWebExtension PRIVATE PkgConfig::WEBKIT)
+  add_custom_command(TARGET SyncpilotWebExtension POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CMAKE_SOURCE_DIR}/../.rivet/stage/app/webext"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "$<TARGET_FILE:SyncpilotWebExtension>"
+            "${CMAKE_SOURCE_DIR}/../.rivet/stage/app/webext/")
 endif()
 
 target_include_directories(RivetHost PRIVATE
@@ -80,6 +95,7 @@ target_include_directories(RivetHost PRIVATE
 target_link_libraries(RivetHost PRIVATE
   PkgConfig::GTK4
   PkgConfig::GLIB
+  PkgConfig::JSON_GLIB
   ${RACKETCS_LIBRARY}
   ZLIB::ZLIB
   ${LZ4_LIBRARY}
