@@ -83,6 +83,9 @@ struct AppState {
   std::unique_ptr<rivet::linux_runtime::Backend> startup_backend;
   std::string startup_error;
   std::atomic<bool> shutting_down{false};
+  // Arbitrates on_shutdown between the GTK shutdown signal and the
+  // SIGTERM/SIGINT hook — both paths must tear down exactly once.
+  std::atomic<bool> teardown_started{false};
 
   UiState state{UiState::Boot};
   std::optional<rivet_app::DaemonStatus> last_status;
@@ -107,6 +110,7 @@ AppState g_state;
 void start_handoff();
 void request_handoff();
 void show_boot_page();
+void perform_orderly_shutdown();
 void show_retry_card(std::string const& error);
 void show_install_card(std::string const& hint_text);
 #ifdef HAVE_WEBKIT
@@ -630,6 +634,21 @@ int on_backend_finished(gpointer) {
   g_state.backend = std::move(backend);
   g_state.api = std::make_unique<rivet_app::API>(*g_state.backend);
 
+  // The shutdown hook goes here, not in main(): the embedded Racket runtime
+  // installs its own SIGTERM handler while booting and would leave ours
+  // inert (issue #3 — verified with a sigaction interposer; the runtime's
+  // handler was the last writer). Booting is done at this point, so
+  // installing now is the last word. Still on the main thread, as the hook
+  // requires. Before this point a SIGTERM hits the default disposition and
+  // simply kills the process — nothing worth tearing down exists yet.
+  try {
+    rivet::system::InstallShutdownHook(perform_orderly_shutdown);
+  } catch (std::exception const& error) {
+    std::fputs((std::string{"shutdown hook unavailable: "} + error.what() + "\n")
+                   .c_str(),
+               stderr);
+  }
+
   // daemon-changed carries the daemon phase; run on the reader thread, so
   // dispatch to the main loop before touching widgets.
   g_state.backend->set_event_handler(
@@ -745,15 +764,30 @@ void on_activate(GtkApplication* app, gpointer) {
 }
 
 void on_shutdown(GApplication*, gpointer) {
+  // Exactly-once teardown: the GTK shutdown signal and the signal hook can
+  // both reach this; whichever lands first does the work.
+  if (g_state.teardown_started.exchange(true, std::memory_order_acq_rel)) {
+    return;
+  }
   g_state.shutting_down.store(true, std::memory_order_release);
-  // Drop the tray before the backend goes: its menu callbacks reference
+  // Step traces: the orderly teardown runs on the signal-hook watcher
+  // thread, so its progress is only visible here.
+  auto trace = [](char const* step) {
+    std::fprintf(stderr, "shutdown: %s\n", step);
+    std::fflush(stderr);
+  };
+  trace("starting");
+  // The tray's menu callbacks reference
   // host state and must not fire during teardown. Same for the update
   // flow's poll timer, whose RPC must not hit a stopped backend.
   g_state.tray.reset();
+  trace("tray released");
   sp::stop_update_flow();
+  trace("update flow stopped");
   if (g_state.startup_thread.joinable()) {
     g_state.startup_thread.join();
   }
+  trace("startup thread joined");
 
   std::unique_ptr<rivet::linux_runtime::Backend> startup_backend;
   {
@@ -762,11 +796,21 @@ void on_shutdown(GApplication*, gpointer) {
   }
   if (startup_backend != nullptr) {
     startup_backend->stop();
+    trace("startup backend stopped");
   }
   if (g_state.backend != nullptr) {
     g_state.backend->stop();
+    trace("backend stopped");
   }
+  trace("complete");
 }
+
+// SIGTERM/SIGINT bypass the GTK main loop, so the shutdown signal alone
+// leaves the window alive over a dead backend (issue #3): systemd stops,
+// session logout and killall all send exactly this signal. The hook's
+// watcher thread runs this same teardown and then exits the process; keep
+// it synchronous and allocation-light.
+void perform_orderly_shutdown() { on_shutdown(nullptr, nullptr); }
 
 }  // namespace
 
