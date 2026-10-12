@@ -10,15 +10,10 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-# Rivet is pinned: builds must be reproducible, and a framework commit is
-# only bumped deliberately. 410fc7c is rivet 0.6.1 — the first release line
-# with native Linux deb/AppImage packaging (linux-formats in rivet.rktd),
-# family-named portable zips, and hardened update artifacts. To bump: point
-# RIVET_PKG_SOURCE / RIVET_COMMIT / the setup-embed-racket ref at the new
-# commit, rebuild, and re-smoke.
-env:
-  RIVET_PKG_SOURCE: "https://github.com/turinglambdaai/rivet.git#410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6"
-  RIVET_COMMIT: "410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6"
+# Rivet comes from the Racket Package Catalog (`raco pkg install rivet`),
+# the standard downstream consumption per rivet docs/ci.md: every CI run and
+# release builds against the same released Rivet, and rivet releases flow in
+# automatically instead of drifting per app.
 
 jobs:
   linux:
@@ -33,19 +28,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6
-      # The minimal embeddable runtime the action provisions carries only
-      # the base distribution: crypto (the updater + rivet/distribution
-      # dependency) must be added explicitly. net/url and openssl ship in
-      # the minimal set.
-      - name: Install backend packages into the embeddable runtime
-        run: raco pkg install --auto --no-docs crypto
-      - name: Install pinned Rivet
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@main
+      # Installed after the embeddable runtime so the catalog dependency
+      # closure resolves against the minimal build — it ships no packages of
+      # its own. crypto backs the app updater (direct dependency).
+      - name: Install Rivet (catalog) and crypto
         run: |
-          set -euo pipefail
-          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
-          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
-          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+          raco pkg install --auto --no-docs rivet
+          raco pkg install --auto --no-docs crypto
       - name: Install GTK4, WebKitGTK and packaging tooling
         run: |
           sudo apt-get update
@@ -114,12 +104,8 @@ jobs:
           distribution: full
           variant: CS
           version: '9.3'
-      - name: Install pinned Rivet
-        run: |
-          set -euo pipefail
-          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
-          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
-          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+      - name: Install Rivet (catalog)
+        run: raco pkg install --auto --no-docs rivet
       - uses: actions/download-artifact@v4
         with:
           path: artifacts

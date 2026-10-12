@@ -3,13 +3,10 @@ on:
   push:
   pull_request:
 
-# Rivet is pinned: builds must be reproducible, and a framework commit is
-# only bumped deliberately (it is the API the host compiles against).
-# 410fc7c is rivet 0.6.1 — the release line the products ship against
-# (native Linux deb/AppImage, family-named portable zips). To bump: point
-# RIVET_PKG_SOURCE at the new commit, rebuild, and re-smoke.
-env:
-  RIVET_PKG_SOURCE: "https://github.com/turinglambdaai/rivet.git#410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6"
+# Rivet comes from the Racket Package Catalog (`raco pkg install rivet`),
+# the standard downstream consumption per rivet docs/ci.md: every CI run and
+# release builds against the same released Rivet, and rivet releases flow in
+# automatically instead of drifting per app.
 jobs:
   release-metadata:
     name: Release metadata (VERSION alignment)
@@ -30,10 +27,10 @@ jobs:
       - uses: Bogdanp/setup-racket@v1.11
         with:
           version: stable
-      - name: Install rivet (upstream main) and crypto
+      - name: Install Rivet (catalog) and crypto
         run: |
-          raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
-          # crypto backs rivet/distribution (the online updater)
+          raco pkg install --auto --no-docs rivet
+          # crypto backs the app updater (direct dependency), not rivet
           raco pkg install --auto --no-docs crypto
       - name: Domain core tests
         run: raco test racket/
@@ -48,34 +45,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache embeddable Racket CS 9.3
-        id: cache-racket-embed
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/racket-embed
-          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
-          save-always: true
-
-      - name: Build Racket CS 9.3 from pinned source
-        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/racket-minimal-9.3-src-builtpkgs.tgz"
-          source_root="$RUNNER_TEMP/racket-9.3"
-          build_root="$RUNNER_TEMP/racket-embed-build"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-
-          curl --fail --location --retry 3 \
-            --output "$archive" \
-            https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-src-builtpkgs.tgz
-          echo "3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295  $archive" |
-            sha256sum --check
-          tar -xzf "$archive" -C "$RUNNER_TEMP"
-          mkdir -p "$build_root"
-          cd "$build_root"
-          "$source_root/src/configure" --prefix="$embed_prefix"
-          make -j4
-          make install
+      - name: Set up embeddable Racket CS
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@main
 
       - name: Install system dependencies
         run: |
@@ -89,43 +60,17 @@ jobs:
             libncurses-dev \
             xvfb
 
-      - name: Install rivet (upstream main) into the embed Racket
+      - name: Install Rivet (catalog) and crypto
         run: |
-          set -euo pipefail
-          echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
-          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          # net/url and openssl (needed by the rslsync installer's HTTPS
-          # download) ship inside the minimal distribution; crypto is the
-          # rivet/distribution dependency the online updater adds to the
-          # backend dependency closure.
-          raco pkg install --auto --no-docs --skip-installed "${RIVET_PKG_SOURCE}"
+          # Installed after the embeddable runtime so the catalog dependency
+          # closure resolves against the minimal build — it ships no packages
+          # of its own. crypto backs the app updater (direct dependency).
+          raco pkg install --auto --no-docs rivet
           raco pkg install --auto --no-docs crypto
 
       - name: Build backend bundle and host
         run: |
           set -euo pipefail
-          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-
-          # Unix-style source installs put the embed headers under
-          # include/racket, not include/. Locate the real one.
-          racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
-          petite_source="$(find "$embed_prefix" -name petite.boot -print -quit)"
-          scheme_source="$(find "$embed_prefix" -name scheme.boot -print -quit)"
-          racket_boot_source="$(find "$embed_prefix" -name racket.boot -print -quit)"
-          racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
-          for artifact in "$racket_include" "$petite_source" "$scheme_source" "$racket_boot_source" "$racket_library"; do
-            if [[ -z "$artifact" || "$artifact" = "." ]]; then
-              echo "Racket CS embed artifact not found under $embed_prefix" >&2
-              exit 1
-            fi
-          done
-
-          export RIVET_RACKET_INCLUDE="$racket_include"
-          export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
-          export RIVET_RACKET_LIBRARY="$racket_library"
-          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
-
           raco rivet doctor
           raco rivet build
           test -x .rivet/stage/RivetHost
@@ -200,14 +145,5 @@ jobs:
           # integration step). Real desktop sessions sandbox fine.
           export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
           export GTK_A11Y=none
-          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-          racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
-          racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
-          petite_source="$(find "$embed_prefix" -name petite.boot -print -quit)"
-          export RIVET_RACKET_INCLUDE="$racket_include"
-          export RIVET_RACKET_LIB_DIR="$(dirname "$racket_library")"
-          export RIVET_RACKET_LIBRARY="$racket_library"
-          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_source")"
           xvfb-run -a bash -c 'set -euo pipefail; raco rivet package && raco rivet verify'
           test -x dist/syncpilot-linux-x64/RivetHost
