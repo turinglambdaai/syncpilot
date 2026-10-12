@@ -679,13 +679,14 @@ void on_activate(GtkApplication* app, gpointer) {
   build_banner();
 
   // Default action for bridge notifications: bring the window back.
-  g_action_map_add_action(G_ACTION_MAP(app), g_simple_action_new("present-main", nullptr));
-  g_signal_connect(g_action_map_lookup_action(G_ACTION_MAP(app), "present-main"),
-                   "activate",
+  GSimpleAction* present = g_simple_action_new("present-main", nullptr);
+  g_action_map_add_action(G_ACTION_MAP(app), G_ACTION(present));
+  g_signal_connect(present, "activate",
                    G_CALLBACK(+[](GSimpleAction*, GVariant*, gpointer) {
                      present_main_window();
                    }),
                    nullptr);
+  g_object_unref(present);
 
   g_state.window = GTK_WINDOW(window);
   g_signal_connect(window, "close-request",
