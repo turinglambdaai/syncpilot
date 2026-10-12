@@ -44,6 +44,7 @@
 #include "GeneratedBackend.hpp"
 #include "GeneratedStrings.h"
 #include "dispatch.h"
+#include "js_bridge.h"
 #include "settings_window.h"
 #include "system_services.hpp"  // rivet::system — single-instance lease
 #include "toast.h"
@@ -670,8 +671,21 @@ void on_activate(GtkApplication* app, gpointer) {
 #ifdef HAVE_WEBKIT
   g_state.web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
   gtk_stack_add_named(g_state.stack, GTK_WIDGET(g_state.web_view), "web");
+  // The official-UI desktop bridge (window.btsync): double-clicking a
+  // synced folder, native choosers, notifications, clipboard. Must land
+  // before the first load so app.js sees the object at init.
+  sp::install_js_bridge(g_state.web_view, GTK_WINDOW(window));
 #endif
   build_banner();
+
+  // Default action for bridge notifications: bring the window back.
+  g_action_map_add_action(G_ACTION_MAP(app), g_simple_action_new("present-main", nullptr));
+  g_signal_connect(g_action_map_lookup_action(G_ACTION_MAP(app), "present-main"),
+                   "activate",
+                   G_CALLBACK(+[](GSimpleAction*, GVariant*, gpointer) {
+                     present_main_window();
+                   }),
+                   nullptr);
 
   g_state.window = GTK_WINDOW(window);
   g_signal_connect(window, "close-request",
