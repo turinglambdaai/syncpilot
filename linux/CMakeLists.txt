@@ -53,6 +53,7 @@ endif()
 
 add_executable(RivetHost
   src/main.cpp
+  src/js_bridge.cpp
   src/settings_window.cpp
   src/toast.cpp
   src/update_flow.cpp
