@@ -58,20 +58,6 @@
                               [update-base-url ""]))
    (string-append default-update-base-url "/update-stable.json")))
 
-(test-case "download progress copies bytes and reports percent"
-  (reset-update-state!)
-  (define payload (make-bytes 250000 7))
-  (define out (open-output-bytes))
-  (copy-with-progress! (open-input-bytes payload) out 250000)
-  (check-equal? (bytes-length (get-output-bytes out)) 250000)
-  (check-equal? (hash-ref (update-state-snapshot) 'percent) 100)
-  ;; percent tracks the declared total, not the end of input
-  (reset-update-state!)
-  (define short-out (open-output-bytes))
-  (copy-with-progress! (open-input-bytes payload) short-out 1000000)
-  (check-equal? (hash-ref (update-state-snapshot) 'percent) 25)
-  (reset-update-state!))
-
 (test-case "signed manifest verifies and selects updates"
   ;; throwaway keypair: same DER formats the release pipeline uses
   (define priv (generate-private-key 'eddsa '((curve ed25519))))
@@ -230,9 +216,10 @@
 (test-case "artifact download follows HTTP redirects"
   ;; syncpilot#1: GitHub release asset URLs answer with a 302 to their CDN;
   ;; the hand-rolled downloader saved the empty redirect body and failed the
-  ;; signed size/SHA-256 check. A loopback server that 302s onto the real
-  ;; artifact reproduces that shape end to end (plain HTTP is fine —
-  ;; download-with-progress! only refuses nothing net/url accepts).
+  ;; signed size/SHA-256 check. rivet's download-update follows redirects
+  ;; itself (rivet#153's built-in budget); a loopback server that 302s onto
+  ;; the real artifact reproduces that shape end to end (plain HTTP is fine
+  ;; — download-update only refuses nothing net/url accepts).
   (reset-update-state!)
   (define tmp (make-temporary-file "syncpilot-redirect-~a" 'directory))
   (define payload (make-bytes 90000 5))
