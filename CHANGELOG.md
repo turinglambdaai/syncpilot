@@ -2,16 +2,23 @@
 
 All notable changes to SyncPilot are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.8.1] - 2026-10-14
 
 ### Added
 
 - **UI language setting, follow-system by default**: Settings → Desktop gains a language row offering 跟随系统 / Follow system, 简体中文 and English — the entries render in both scripts regardless of the active UI language, so someone facing an all-zh window (what every install got until now: the language variable existed but nothing ever moved it off zh) can still find and read the row. `system` (the new default) resolves from the session locale at startup — zh-family sessions get zh, everything else en — so first impressions match the user's desktop instead of the author's. The choice persists as `language` in syncpilot-settings.json (pre-existing files fall back per the usual serde(default) semantics, no migration stamp needed) and applies on the next launch; saving it toasts the restart hint, same pattern as the port change.
 - **Desktop integration bridge for the official UI** (`window.btsync`): the official client injects this object into its embedded web view and the UI routes every desktop behavior through it — double-clicking a synced folder opens the file manager at that folder (until now an explanation dialog appeared instead), adding a folder uses the native directory chooser, share links and docs hand off to the browser, notifications leave the page, and copy buttons reach the real clipboard. A web-process extension defines the object in the page world at document start (UserContentManager user scripts miss the first document on WebKitGTK 2.52), calls ride a custom `syncpilot-bridge://` scheme whose handler does the native work, and the WebKit user agent carries the official `SyncWebKitWebView` marker so the UI's WebKit code path engages.
+- **Product site dark theme**: a full dark palette (family keepsake values) driven by `data-theme` on `<html>`, resolved before first paint from `localStorage` or the system preference (no flash), with a `◐` toggle that persists the explicit choice — plus the family warm palette in light mode, replacing the old Apple-blue/`#F5F5F7` look.
 
 ### Fixed
 
 - **SIGTERM shuts the app down instead of killing the backend under a living window** ([#3](https://github.com/turinglambdaai/syncpilot/issues/3)): OS signals bypass the GTK main loop, so the orderly teardown never ran — `systemd --user stop`, session logout and `killall` all left a zombie window over a dead backend. The rivet shutdown hook is now installed once the embedded runtime finishes booting: installing in `main()` loses the race to the Racket runtime's own SIGTERM handler, which is what kept the hook inert. Teardown is exactly-once across the GTK and signal paths, and each step traces into the host log.
+- **README described a tar.gz-only world that ended in 0.7.0**: the "Honest gaps" entry claiming no deb/rpm/AppImage packaging and the Install section's "that tarball is the only artifact — Linux x64 only" were both stale; Install now documents the real per-architecture matrix (deb · rpm · AppImage · tar.gz · zip, x64 + arm64, with `SHA256SUMS`, SBOM, notices and the signed update manifest). The product-site URL is also gone from the README header — the GitHub About field is the single home for it.
+
+### Changed
+
+- **Rivet is consumed as a package, pinned to v0.11.0**: the Linux host CMake no longer hand-copies rivet's 14 platform translation units into its executable list — it `add_subdirectory`s the installed Rivet platform and links `rivet::platform` (the rivet#238 contract taskly already follows), so rivet adding a translation unit needs no downstream change. CI and release install the package from the tag-pinned Git source `https://github.com/turinglambdaai/rivet.git#v0.11.0` and use the `setup-embed-racket` action at `@v0.11.0` — the hold-back form rivet docs/ci.md prescribes for releases (the package catalog has one moving entry per name and no version selector, so catalog floating was never a release pin).
+- **Product site defaults to Chinese** (`lang="zh-CN"`) with the family i18n mechanism: `data-i18n` keys resolved against a JS dictionary instead of per-element `data-en`/`data-zh` attributes, `<title>`/meta description following the active language; explicit choice still persists, otherwise the browser locale decides. Still one self-contained file, zero dependencies.
 
 ## [0.8.0]
 
