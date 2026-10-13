@@ -1,35 +1,78 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SyncPilot — the official Resilio Sync experience on Linux</title>
-<meta name="description" content="Native Linux desktop shell for Resilio Sync: the official Web UI in a real desktop window, with tray, autostart, daemon watchdog and in-app updates. Free, AGPL-3.0." />
+<title>SyncPilot — Linux 上的官方 Resilio Sync 体验</title>
+<meta name="description" content="Resilio Sync 的原生 Linux 桌面外壳：官方 Web UI 装进真正的桌面窗口，带托盘、开机自启、守护进程看护与应用内更新。免费开源，AGPL-3.0。" />
 <link rel="icon" type="image/png" href="icon.png" />
+<script>
+  // Theme anti-flash: resolve data-theme before first paint — localStorage
+  // when the visitor has picked manually, otherwise the system preference.
+  (function () {
+    var t;
+    try { t = localStorage.getItem('syncpilot-theme'); } catch (e) {}
+    if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
 <style>
+/* Family palette (payback/taskly/keepsake values), light & dark, zero deps. */
 :root {
-  --bg: #F5F5F7;
-  --bg-card: #FFFFFF;
-  --text: #1D1D1F;
-  --text-2: #6E6E73;
-  --text-3: #8E8E93;
-  --accent: #1E7BE0;
-  --accent-hover: #1663B8;
-  --accent-soft: rgba(30, 123, 224, 0.14);
-  --accent-tint: rgba(30, 123, 224, 0.08);
-  --navy: #1D1D42;
-  --border: rgba(0, 0, 0, 0.10);
-  --border-strong: rgba(0, 0, 0, 0.16);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --ink: #1f1d1a;
+  --muted: #6b6660;
+  --muted-2: #8a847c;
+  --line: #e8e2d9;
+  --line-strong: #d9d2c6;
+  --accent: #c15f3c;
+  --accent-hover: #a94f30;
+  --accent-soft: #f7e5dd;
+  --accent-ink: #ffffff;
+  --nav-bg: rgba(250, 247, 242, 0.88);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   --wrapper-width: 1080px;
+  --radius: 14px;
   --radius-l: 20px;
-  --radius-m: 14px;
   --radius-s: 10px;
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05);
-  --shadow-hover: 0 2px 4px rgba(0,0,0,0.05), 0 14px 40px rgba(0,0,0,0.09);
-  --shadow-window: 0 30px 70px rgba(0,0,0,0.13), 0 8px 20px rgba(0,0,0,0.06);
+  --shadow-card: 0 1px 2px rgba(31, 29, 26, 0.04), 0 8px 24px rgba(31, 29, 26, 0.05);
+  --shadow-hover: 0 2px 4px rgba(31, 29, 26, 0.05), 0 14px 40px rgba(31, 29, 26, 0.09);
+  --shadow-window: 0 30px 70px rgba(31, 29, 26, 0.13), 0 8px 20px rgba(31, 29, 26, 0.06);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Explicit light/dark overrides: a manual choice wins over the OS. */
+:root[data-theme="light"] {
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --ink: #1f1d1a;
+  --muted: #6b6660;
+  --muted-2: #8a847c;
+  --line: #e8e2d9;
+  --line-strong: #d9d2c6;
+  --accent: #c15f3c;
+  --accent-hover: #a94f30;
+  --accent-soft: #f7e5dd;
+  --accent-ink: #ffffff;
+  --nav-bg: rgba(250, 247, 242, 0.88);
+}
+:root[data-theme="dark"] {
+  --bg: #1b1a18;
+  --surface: #24221f;
+  --ink: #ece9e2;
+  --muted: #a6a099;
+  --muted-2: #7d776f;
+  --line: #35322d;
+  --line-strong: #45413a;
+  --accent: #d08a6e;
+  --accent-hover: #e0977a;
+  --accent-soft: #3a2d27;
+  --accent-ink: #1b1a18;
+  --nav-bg: rgba(27, 26, 24, 0.88);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.30);
+  --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.30), 0 14px 40px rgba(0, 0, 0, 0.38);
+  --shadow-window: 0 30px 70px rgba(0, 0, 0, 0.45), 0 8px 20px rgba(0, 0, 0, 0.30);
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -37,7 +80,7 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   background: var(--bg);
-  color: var(--text);
+  color: var(--ink);
   line-height: 1.6;
   letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
@@ -49,48 +92,60 @@ section { padding: 72px 0; }
 /* ---- nav ---- */
 nav {
   position: sticky; top: 0; z-index: 50;
-  background: rgba(245, 245, 247, 0.82);
+  background: var(--nav-bg);
   backdrop-filter: saturate(1.6) blur(14px);
   -webkit-backdrop-filter: saturate(1.6) blur(14px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
 }
 .nav-wrapper {
   max-width: var(--wrapper-width); margin: 0 auto; padding: 0 24px;
   height: 60px; display: flex; align-items: center; justify-content: space-between;
 }
-.nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 19px; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+.nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 19px; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
 .nav-brand img { width: 30px; height: 30px; border-radius: 8px; }
-.nav-links { display: flex; align-items: center; gap: 26px; }
-.nav-links a { color: var(--text-2); text-decoration: none; font-size: 14.5px; font-weight: 500; }
-.nav-links a:hover { color: var(--text); }
+.nav-links { display: flex; align-items: center; gap: 22px; }
+.nav-links a { color: var(--muted); text-decoration: none; font-size: 14.5px; font-weight: 500; }
+.nav-links a:hover { color: var(--accent); }
 .nav-links a.nav-cta {
-  background: var(--accent); color: #fff; padding: 7px 16px; border-radius: 999px; font-weight: 600;
+  background: var(--accent); color: var(--accent-ink); padding: 7px 16px; border-radius: 999px; font-weight: 600;
 }
-.nav-links a.nav-cta:hover { background: var(--accent-hover); color: #fff; }
+.nav-links a.nav-cta:hover { background: var(--accent-hover); color: var(--accent-ink); }
 
 /* ---- language dropdown (family standard) ---- */
 .lang-dropdown-wrapper { position: relative; }
-.lang-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; color: var(--text-2); padding: 6px 10px; border-radius: 8px; transition: color .2s, background .2s; }
+.lang-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; color: var(--muted); padding: 6px 10px; border-radius: 8px; transition: color .2s, background .2s; }
 .lang-btn:hover { color: var(--accent); background: var(--accent-soft); }
-.lang-menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-s); box-shadow: var(--shadow-hover); padding: 6px; min-width: 132px; margin: 0; list-style: none; opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .18s var(--ease), visibility .18s var(--ease), transform .18s var(--ease); z-index: 10000; }
+.lang-menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); box-shadow: var(--shadow-hover); padding: 6px; min-width: 132px; margin: 0; list-style: none; opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .18s var(--ease), visibility .18s var(--ease), transform .18s var(--ease); z-index: 10000; }
 .lang-dropdown-wrapper:hover .lang-menu, .lang-dropdown-wrapper:focus-within .lang-menu { opacity: 1; visibility: visible; transform: translateY(0); }
 .lang-menu li { margin: 0; }
-.lang-menu button { display: block; width: 100%; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; color: var(--text); text-align: left; padding: 7px 12px; border-radius: 6px; transition: background .15s, color .15s; }
-.lang-menu button:hover, .lang-menu button:focus-visible { background: var(--accent-tint); color: var(--accent); outline: none; }
+.lang-menu button { display: block; width: 100%; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; color: var(--ink); text-align: left; padding: 7px 12px; border-radius: 6px; transition: background .15s, color .15s; }
+.lang-menu button:hover, .lang-menu button:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+
+/* ---- theme toggle (family standard) ---- */
+.theme-btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.theme-btn:hover { background: var(--accent-soft); color: var(--accent); }
 
 /* ---- hero ---- */
 .hero { text-align: center; padding: 88px 0 64px; }
 .eyebrow {
   display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: 0.05em;
-  text-transform: uppercase; color: var(--accent); background: var(--accent-tint);
+  text-transform: uppercase; color: var(--accent); background: var(--accent-soft);
   padding: 5px 14px; border-radius: 999px; margin-bottom: 22px;
 }
 h1 {
   font-size: clamp(38px, 6vw, 60px); line-height: 1.06; letter-spacing: -0.028em;
   margin: 0 0 20px; font-weight: 700;
 }
-h1 .soft { color: var(--text-3); }
-.hero-sub { font-size: 20px; color: var(--text-2); max-width: 660px; margin: 0 auto 34px; }
+h1 .soft { color: var(--muted-2); }
+.hero-sub { font-size: 20px; color: var(--muted); max-width: 660px; margin: 0 auto 34px; }
 .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .btn {
   display: inline-flex; align-items: center; gap: 8px;
@@ -98,18 +153,18 @@ h1 .soft { color: var(--text-3); }
   font-size: 16px; font-weight: 600; text-decoration: none;
   transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease), background 0.15s;
 }
-.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 6px 18px var(--accent-soft); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 18px var(--accent-soft); }
 .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
-.btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-card); }
+.btn-secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); box-shadow: var(--shadow-card); }
 .btn-secondary:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
-.trust-row { margin-top: 18px; font-size: 13.5px; color: var(--text-3); }
-.trust-row b { color: var(--text-2); font-weight: 600; }
+.trust-row { margin-top: 18px; font-size: 13.5px; color: var(--muted-2); }
+.trust-row b { color: var(--muted); font-weight: 600; }
 
 /* ---- window mockup ---- */
 .hero-visual { max-width: 940px; margin: 60px auto 0; position: relative; }
 .code-window {
-  background: #1E1E22; border-radius: var(--radius-m); overflow: hidden;
-  box-shadow: var(--shadow-window); border: 1px solid rgba(255,255,255,0.07);
+  background: #1e1e22; border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow-window); border: 1px solid var(--line-strong);
 }
 .window-header {
   display: flex; align-items: center; padding: 11px 14px;
@@ -126,27 +181,27 @@ h1 .soft { color: var(--text-3); }
 /* ---- features ---- */
 .section-head { text-align: center; max-width: 640px; margin: 0 auto 48px; }
 h2 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -0.022em; margin: 0 0 14px; font-weight: 700; }
-.section-head p { color: var(--text-2); font-size: 17px; margin: 0; }
+.section-head p { color: var(--muted); font-size: 17px; margin: 0; }
 .grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px;
 }
 .card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-m);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 26px 26px 24px; box-shadow: var(--shadow-card);
   transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease);
 }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
 .card .icon {
   width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
-  background: var(--accent-tint); color: var(--accent); margin-bottom: 16px;
+  background: var(--accent-soft); color: var(--accent); margin-bottom: 16px;
 }
 .card .icon svg { width: 22px; height: 22px; }
 .card h3 { margin: 0 0 7px; font-size: 16.5px; font-weight: 650; letter-spacing: -0.01em; }
-.card p { margin: 0; color: var(--text-2); font-size: 14.5px; line-height: 1.55; }
+.card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
 .card code { font-family: var(--font-mono); font-size: 0.9em; }
 
 /* ---- how ---- */
-.how { background: var(--bg-card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.how { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .steps { display: flex; align-items: stretch; justify-content: center; gap: 0; flex-wrap: wrap; }
 .step {
   flex: 1 1 240px; max-width: 300px; text-align: center; padding: 10px 22px;
@@ -154,43 +209,43 @@ h2 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -0.022em; margin: 0 0 14
 .step-num {
   width: 40px; height: 40px; margin: 0 auto 14px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: var(--accent); color: #fff; font-weight: 700; font-size: 16px;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 16px;
   box-shadow: 0 6px 16px var(--accent-soft);
 }
 .step h3 { margin: 0 0 6px; font-size: 16.5px; }
-.step p { margin: 0; color: var(--text-2); font-size: 14.5px; }
-.step-arrow { align-self: center; color: var(--text-3); font-size: 26px; padding: 0 6px; }
+.step p { margin: 0; color: var(--muted); font-size: 14.5px; }
+.step-arrow { align-self: center; color: var(--muted-2); font-size: 26px; padding: 0 6px; }
 @media (max-width: 760px) { .step-arrow { display: none; } }
 
 /* ---- security strip ---- */
 .secure {
   display: flex; gap: 14px; align-items: flex-start;
-  background: var(--accent-tint); border: 1px solid var(--accent-soft);
-  border-radius: var(--radius-m); padding: 22px 26px; max-width: 780px; margin: 0 auto;
+  background: var(--accent-soft); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 22px 26px; max-width: 780px; margin: 0 auto;
 }
 .secure svg { flex: none; width: 24px; height: 24px; color: var(--accent); margin-top: 2px; }
-.secure p { margin: 0; font-size: 15px; color: var(--text-2); }
-.secure b { color: var(--text); }
+.secure p { margin: 0; font-size: 15px; color: var(--muted); }
+.secure b { color: var(--ink); }
 
 /* ---- download ---- */
 .dl-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; max-width: 940px; margin: 0 auto; }
 .dl-card {
   display: flex; align-items: center; gap: 14px; text-decoration: none;
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-m);
-  padding: 18px 20px; box-shadow: var(--shadow-card); color: var(--text);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px 20px; box-shadow: var(--shadow-card); color: var(--ink);
   transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease);
 }
 .dl-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-.dl-card .dl-icon { width: 38px; height: 38px; border-radius: 9px; background: var(--accent-tint); display: flex; align-items: center; justify-content: center; color: var(--accent); flex: none; }
+.dl-card .dl-icon { width: 38px; height: 38px; border-radius: 9px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; color: var(--accent); flex: none; }
 .dl-card b { display: block; font-size: 15px; }
-.dl-card span { display: block; font-size: 12.5px; color: var(--text-3); }
+.dl-card span { display: block; font-size: 12.5px; color: var(--muted-2); }
 
 footer {
-  border-top: 1px solid var(--border); padding: 34px 24px; text-align: center;
-  color: var(--text-3); font-size: 13.5px;
+  border-top: 1px solid var(--line); padding: 34px 24px; text-align: center;
+  color: var(--muted-2); font-size: 13.5px;
 }
-footer a { color: var(--text-2); text-decoration: none; font-weight: 500; }
-footer a:hover { color: var(--text); }
+footer a { color: var(--muted); text-decoration: none; font-weight: 500; }
+footer a:hover { color: var(--accent); }
 
 /* ---- scroll animation ---- */
 .animate { opacity: 0; transform: translateY(18px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
@@ -204,40 +259,35 @@ footer a:hover { color: var(--text); }
   <div class="nav-wrapper">
     <a class="nav-brand" href="#"><img src="icon.png" alt="" />SyncPilot</a>
     <div class="nav-links">
-      <a href="#features" data-en="Features" data-zh="功能">Features</a>
-      <a href="https://github.com/turinglambdaai/syncpilot#readme" data-en="Docs" data-zh="文档">Docs</a>
+      <a href="#features" data-i18n="nav.features">功能</a>
+      <a href="https://github.com/turinglambdaai/syncpilot#readme" data-i18n="nav.docs">文档</a>
       <a href="https://github.com/turinglambdaai/syncpilot">GitHub</a>
       <div class="lang-dropdown-wrapper">
         <button class="lang-btn" type="button" onclick="void 0" aria-label="Switch language">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-          <span id="current-lang-label">English</span>
+          <span id="current-lang-label">简体中文</span>
         </button>
         <ul class="lang-menu">
           <li><button type="button" onclick="setLanguage('en')">English</button></li>
           <li><button type="button" onclick="setLanguage('zh')">简体中文</button></li>
         </ul>
       </div>
-      <a class="nav-cta" href="#download" data-en="Download" data-zh="下载">Download</a>
+      <button class="theme-btn" id="theme-btn" type="button" aria-label="Toggle theme">◐</button>
+      <a class="nav-cta" href="#download" data-i18n="nav.download">下载</a>
     </div>
   </div>
 </nav>
 
 <section class="hero">
   <div class="container">
-    <div class="eyebrow animate" data-en="Resilio Sync desktop client for Linux" data-zh="Linux 桌面版 Resilio Sync 客户端">Resilio Sync desktop client for Linux</div>
-    <h1 class="animate" data-en='The official Resilio Sync experience,<br /><span class="soft">finally on Linux.</span>' data-zh='原汁原味的 Resilio Sync 体验，<br /><span class="soft">终于登陆 Linux。</span>'>The official Resilio Sync experience,<br /><span class="soft">finally on Linux.</span></h1>
-    <p class="hero-sub animate"
-       data-en='SyncPilot puts the <strong>official Resilio Web UI</strong> inside a native desktop window and manages the official <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> daemon behind it. Every screen is the official one — nothing to re-learn.'
-       data-zh='SyncPilot 把<strong>官方 Resilio Web UI</strong>装进原生桌面窗口，并在背后托管官方 <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> 守护进程。每一屏都是官方界面——无需重新学习。'>
-      SyncPilot puts the <strong>official Resilio Web UI</strong> inside a native desktop window and
-      manages the official <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> daemon behind it.
-      Every screen is the official one — nothing to re-learn.
-    </p>
+    <div class="eyebrow animate" data-i18n="hero.eyebrow">Linux 桌面版 Resilio Sync 客户端</div>
+    <h1 class="animate"><span data-i18n="hero.h1a">原汁原味的 Resilio Sync 体验，</span><br /><span class="soft" data-i18n="hero.h1b">终于登陆 Linux。</span></h1>
+    <p class="hero-sub animate" data-i18n-html="hero.sub">SyncPilot 把<strong>官方 Resilio Web UI</strong>装进原生桌面窗口，并在背后托管官方 <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> 守护进程。每一屏都是官方界面——无需重新学习。</p>
     <div class="hero-actions animate">
-      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest" data-en="Download" data-zh="下载">Download</a>
-      <a class="btn btn-secondary" href="https://github.com/turinglambdaai/syncpilot" data-en="View on GitHub" data-zh="在 GitHub 查看">View on GitHub</a>
+      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest" data-i18n="hero.download">下载</a>
+      <a class="btn btn-secondary" href="https://github.com/turinglambdaai/syncpilot" data-i18n="hero.source">在 GitHub 查看</a>
     </div>
-    <div class="trust-row animate" data-en='<b>tar.gz</b> &nbsp;—&nbsp; x86_64 (Ubuntu 24.04+) &nbsp;—&nbsp; free, AGPL-3.0' data-zh='<b>tar.gz</b> &nbsp;—&nbsp; x86_64（Ubuntu 24.04+）&nbsp;—&nbsp; 免费开源，AGPL-3.0'><b>tar.gz</b> &nbsp;—&nbsp; x86_64 (Ubuntu 24.04+) &nbsp;—&nbsp; free, AGPL-3.0</div>
+    <div class="trust-row animate" data-i18n-html="hero.trust"><b>deb · rpm · AppImage · tar.gz</b> &nbsp;—&nbsp; x64 / arm64（Ubuntu 24.04+）&nbsp;—&nbsp; 免费开源，AGPL-3.0</div>
 
     <div class="hero-visual animate">
       <div class="code-window">
@@ -258,39 +308,39 @@ footer a:hover { color: var(--text); }
 <section id="features">
   <div class="container">
     <div class="section-head animate">
-      <h2 data-en='Official where it matters,<br />native where it counts.' data-zh='关键处用官方，<br />该原生处就原生。'>Official where it matters,<br />native where it counts.</h2>
-      <p data-en="Folders, peers, transfers, preferences, activation — all of it is the official Resilio interface, version-matched to your rslsync build. SyncPilot adds everything the official Linux story was missing." data-zh="文件夹、伙伴、传输、偏好设置、激活——全部是官方 Resilio 界面，版本与你的 rslsync 构建一致。SyncPilot 补齐了官方在 Linux 上缺失的一切。">Folders, peers, transfers, preferences, activation — all of it is the official Resilio interface, version-matched to your rslsync build. SyncPilot adds everything the official Linux story was missing.</p>
+      <h2 data-i18n-html="features.title">关键处用官方，<br />该原生处就原生。</h2>
+      <p data-i18n="features.sub">文件夹、伙伴、传输、偏好设置、激活——全部是官方 Resilio 界面，版本与你的 rslsync 构建一致。SyncPilot 补齐了官方在 Linux 上缺失的一切。</p>
     </div>
     <div class="grid">
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 17V9l6 8V9"/></svg></div>
-        <h3 data-en="Zero interface drift" data-zh="零界面偏差">Zero interface drift</h3>
-        <p data-en="The window embeds the official Resilio Web UI itself — same screens, same workflow as the Windows and macOS clients, nothing re-implemented to fall behind." data-zh="窗口内嵌的就是官方 Resilio Web UI——与 Windows、macOS 客户端相同的界面与工作流，没有任何会落后的二次实现。">The window embeds the official Resilio Web UI itself — same screens, same workflow as the Windows and macOS clients, nothing re-implemented to fall behind.</p>
+        <h3 data-i18n="f1.title">零界面偏差</h3>
+        <p data-i18n="f1.body">窗口内嵌的就是官方 Resilio Web UI——与 Windows、macOS 客户端相同的界面与工作流，没有任何会落后的二次实现。</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg></div>
-        <h3 data-en="Daemon lifecycle" data-zh="守护进程全生命周期">Daemon lifecycle</h3>
-        <p data-en="One-click start and stop, adopts an already-running daemon, and a crash watchdog restarts it with exponential backoff. Optionally keeps running after the app exits." data-zh="一键启停，可接管已在运行的守护进程；崩溃看门狗按指数退避自动重启。还可选在应用退出后继续保活。">One-click start and stop, adopts an already-running daemon, and a crash watchdog restarts it with exponential backoff. Optionally keeps running after the app exits.</p>
+        <h3 data-i18n="f2.title">守护进程全生命周期</h3>
+        <p data-i18n="f2.body">一键启停，可接管已在运行的守护进程；崩溃看门狗按指数退避自动重启。还可选在应用退出后继续保活。</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
-        <h3 data-en="Setup &amp; upgrades" data-zh="首次运行与升级">Setup &amp; upgrades</h3>
-        <p data-en="No rslsync yet? One click fetches the official binary from Resilio&apos;s CDN, sha256-verified into <code>~/.local/bin</code>. Data paths never change between versions — unpack an upgrade and keep syncing." data-zh="机器上还没有 rslsync？一键从官方 CDN 下载，经 sha256 校验装入 <code>~/.local/bin</code>。数据路径跨版本不变，解压新版即可继续同步。">No rslsync yet? One click fetches the official binary from Resilio&apos;s CDN, sha256-verified into <code>~/.local/bin</code>. Data paths never change between versions — unpack an upgrade and keep syncing.</p>
+        <h3 data-i18n="f3.title">首次运行与升级</h3>
+        <p data-i18n-html="f3.body">机器上还没有 rslsync？一键从官方 CDN 下载，经 sha256 校验装入 <code>~/.local/bin</code>。数据路径跨版本不变，解压新版即可继续同步。</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 3l-4 4-4-4"/></svg></div>
-        <h3 data-en="Autostart &amp; settings" data-zh="自启与设置">Autostart &amp; settings</h3>
-        <p data-en="Launch at login via XDG autostart, single-instance window restore, and a standalone native settings window for the daemon, port and credentials." data-zh="XDG autostart 开机自启、单实例窗口唤起，还有独立的原生设置窗口管理守护进程、端口与凭据。">Launch at login via XDG autostart, single-instance window restore, and a standalone native settings window for the daemon, port and credentials.</p>
+        <h3 data-i18n="f4.title">自启与设置</h3>
+        <p data-i18n="f4.body">XDG autostart 开机自启、单实例窗口唤起，还有独立的原生设置窗口管理守护进程、端口与凭据。</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/><path d="m9 12 2 2 4-4"/></svg></div>
-        <h3 data-en="Automatic updates" data-zh="自动更新">Automatic updates</h3>
-        <p data-en="A daily background check against an Ed25519-signed manifest. SyncPilot asks before downloading, verifies the signature, and never touches rslsync state." data-zh="每天后台检查一次 Ed25519 签名的 manifest，下载前必先询问、验签通过才落盘；rslsync 数据绝不触碰。">A daily background check against an Ed25519-signed manifest. SyncPilot asks before downloading, verifies the signature, and never touches rslsync state.</p>
+        <h3 data-i18n="f5.title">自动更新</h3>
+        <p data-i18n="f5.body">每天后台检查一次 Ed25519 签名的 manifest，下载前必先询问、验签通过才落盘；rslsync 数据绝不触碰。</p>
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg></div>
-        <h3 data-en="Secure by default" data-zh="默认安全">Secure by default</h3>
-        <p data-en="The Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy — no login prompts, and the daemon never serves an unauthenticated request." data-zh="Web UI 仅留在 <code>127.0.0.1</code>，经注入认证的环回代理访问——不弹登录框，守护进程绝不响应未认证请求。">The Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy — no login prompts, and the daemon never serves an unauthenticated request.</p>
+        <h3 data-i18n="f6.title">默认安全</h3>
+        <p data-i18n-html="f6.body">Web UI 仅留在 <code>127.0.0.1</code>，经注入认证的环回代理访问——不弹登录框，守护进程绝不响应未认证请求。</p>
       </div>
     </div>
   </div>
@@ -299,26 +349,26 @@ footer a:hover { color: var(--text); }
 <section class="how">
   <div class="container">
     <div class="section-head animate">
-      <h2 data-en="Up and running in three steps" data-zh="三步上手">Up and running in three steps</h2>
-      <p data-en="Same feel as installing the official client on any other platform." data-zh="与在其他平台安装官方客户端的体验一致。">Same feel as installing the official client on any other platform.</p>
+      <h2 data-i18n="how.title">三步上手</h2>
+      <p data-i18n="how.sub">与在其他平台安装官方客户端的体验一致。</p>
     </div>
     <div class="steps animate">
       <div class="step">
         <div class="step-num">1</div>
-        <h3 data-en="Install" data-zh="安装">Install</h3>
-        <p data-en="Grab the tar.gz from the release page, unpack, run — GTK 4 and WebKitGTK come with Ubuntu 24.04+." data-zh="从 release 页面获取 tar.gz，解压即用——GTK 4 与 WebKitGTK 在 Ubuntu 24.04+ 上系统自带。">Grab the tar.gz from the release page, unpack, run — GTK 4 and WebKitGTK come with Ubuntu 24.04+.</p>
+        <h3 data-i18n="s1.title">安装</h3>
+        <p data-i18n="s1.body">从 release 页获取 deb、rpm、AppImage 或 tar.gz，安装即用——GTK 4 与 WebKitGTK 在 Ubuntu 24.04+ 上系统自带。</p>
       </div>
       <div class="step-arrow">→</div>
       <div class="step">
         <div class="step-num">2</div>
-        <h3 data-en="Launch" data-zh="启动">Launch</h3>
-        <p data-en="SyncPilot starts the official daemon and hands the window to the official interface. No rslsync yet? One click fetches it." data-zh="SyncPilot 启动官方守护进程，并把窗口交给官方界面。还没有 rslsync？一键获取。">SyncPilot starts the official daemon and hands the window to the official interface. No rslsync yet? One click fetches it.</p>
+        <h3 data-i18n="s2.title">启动</h3>
+        <p data-i18n="s2.body">SyncPilot 启动官方守护进程，并把窗口交给官方界面。还没有 rslsync？一键获取。</p>
       </div>
       <div class="step-arrow">→</div>
       <div class="step">
         <div class="step-num">3</div>
-        <h3 data-en="Sync" data-zh="同步">Sync</h3>
-        <p data-en="Activate and add folders through the official wizard — exactly like on Windows and macOS." data-zh="通过官方向导完成激活并添加文件夹——与 Windows、macOS 上完全一致。">Activate and add folders through the official wizard — exactly like on Windows and macOS.</p>
+        <h3 data-i18n="s3.title">同步</h3>
+        <p data-i18n="s3.body">通过官方向导完成激活并添加文件夹——与 Windows、macOS 上完全一致。</p>
       </div>
     </div>
   </div>
@@ -328,7 +378,7 @@ footer a:hover { color: var(--text); }
   <div class="container">
     <div class="secure animate">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <p data-en='<b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon&apos;s credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.' data-zh='<b>你的密钥与文件永不出机。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。所有 P2P 流量均由官方二进制处理。'><b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon's credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.</p>
+      <p data-i18n-html="secure.text"><b>你的密钥与文件永不出机。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。所有 P2P 流量均由官方二进制处理。</p>
     </div>
   </div>
 </section>
@@ -336,22 +386,22 @@ footer a:hover { color: var(--text); }
 <section id="download" style="padding-top: 24px;">
   <div class="container">
     <div class="section-head animate">
-      <h2 data-en="Get SyncPilot" data-zh="获取 SyncPilot">Get SyncPilot</h2>
-      <p data-en="Unpack, run, done. After that SyncPilot keeps itself current — a daily signed-manifest check asks before downloading. The official rslsync binary is fetched on first start if missing." data-zh="解压、运行、完成。之后 SyncPilot 会保持自我更新——每天按签名 manifest 检查一次，下载前必先询问。缺失官方 rslsync 二进制时，会在首次启动时自动获取。">Unpack, run, done. After that SyncPilot keeps itself current — a daily signed-manifest check asks before downloading. The official rslsync binary is fetched on first start if missing.</p>
+      <h2 data-i18n="download.title">获取 SyncPilot</h2>
+      <p data-i18n="download.sub">安装即用。之后 SyncPilot 会保持自我更新——每天按签名 manifest 检查一次，下载前必先询问。缺失官方 rslsync 二进制时，会在首次启动时自动获取。</p>
     </div>
     <div class="dl-cards animate">
       <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/latest">
         <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
-        <div><b>deb · rpm · AppImage · tar.gz · zip</b><span>Linux · x64 / arm64 · signed update manifest</span></div>
+        <div><b>deb · rpm · AppImage · tar.gz · zip</b><span data-i18n="dl.sub">Linux · x64 / arm64 · 签名更新 manifest</span></div>
       </a>
     </div>
   </div>
 </section>
 
-<footer><span data-en='SyncPilot is free software under <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.<br /><br />
-  <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a>' data-zh='SyncPilot 为 <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> 自由软件，与 Resilio, Inc. 无隶属关系。「Resilio Sync」为其所有者的商标。<br /><br />
-  <a href="https://github.com/turinglambdaai/syncpilot">GitHub 查看源码</a>'>SyncPilot is free software under <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.<br /><br />
-  <a href="https://github.com/turinglambdaai/syncpilot">Source on GitHub</a></span></footer>
+<footer>
+  <span data-i18n="footer.legal-pre">SyncPilot 为</span> <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> <span data-i18n="footer.legal-post">自由软件，与 Resilio, Inc. 无隶属关系。「Resilio Sync」为其所有者的商标。</span><br /><br />
+  <a href="https://github.com/turinglambdaai/syncpilot" data-i18n="footer.source">GitHub 查看源码</a>
+</footer>
 
 <script>
 const io = new IntersectionObserver((entries) => {
@@ -359,11 +409,9 @@ const io = new IntersectionObserver((entries) => {
 }, { threshold: 0.12 });
 document.querySelectorAll('.animate').forEach((el) => io.observe(el));
 
-// Language policy (family standard): explicit choice wins and persists;
-// otherwise follow the browser locale on every visit; fall back to English
-// here because the primary audience tracks the upstream English docs.
-const LANG_OVERRIDE_KEY = 'syncpilot-lang-override-v2';
-const LEGACY_LANGUAGE_KEY = 'syncpilot-lang';
+// i18n (family standard): data-i18n keys resolved against this dictionary;
+// the static page is Chinese (zh-CN) and the explicit choice persists —
+// otherwise the browser locale decides on every visit.
 const pageMetadata = {
   en: {
     title: 'SyncPilot — the official Resilio Sync experience on Linux',
@@ -374,22 +422,111 @@ const pageMetadata = {
     description: 'Resilio Sync 的原生 Linux 桌面外壳：官方 Web UI 装进真正的桌面窗口，带托盘、开机自启、守护进程看护与应用内更新。免费开源，AGPL-3.0。'
   }
 };
+const i18n = {
+  en: {
+    'nav.features': 'Features',
+    'nav.docs': 'Docs',
+    'nav.download': 'Download',
+    'hero.eyebrow': 'Resilio Sync desktop client for Linux',
+    'hero.h1a': 'The official Resilio Sync experience,',
+    'hero.h1b': 'finally on Linux.',
+    'hero.sub': 'SyncPilot puts the <strong>official Resilio Web UI</strong> inside a native desktop window and manages the official <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> daemon behind it. Every screen is the official one — nothing to re-learn.',
+    'hero.download': 'Download',
+    'hero.source': 'View on GitHub',
+    'hero.trust': '<b>deb · rpm · AppImage · tar.gz</b> &nbsp;—&nbsp; x64 / arm64 (Ubuntu 24.04+) &nbsp;—&nbsp; free, AGPL-3.0',
+    'features.title': 'Official where it matters,<br />native where it counts.',
+    'features.sub': 'Folders, peers, transfers, preferences, activation — all of it is the official Resilio interface, version-matched to your rslsync build. SyncPilot adds everything the official Linux story was missing.',
+    'f1.title': 'Zero interface drift',
+    'f1.body': 'The window embeds the official Resilio Web UI itself — same screens, same workflow as the Windows and macOS clients, nothing re-implemented to fall behind.',
+    'f2.title': 'Daemon lifecycle',
+    'f2.body': 'One-click start and stop, adopts an already-running daemon, and a crash watchdog restarts it with exponential backoff. Optionally keeps running after the app exits.',
+    'f3.title': 'Setup &amp; upgrades',
+    'f3.body': 'No rslsync yet? One click fetches the official binary from Resilio&apos;s CDN, sha256-verified into <code>~/.local/bin</code>. Data paths never change between versions — unpack an upgrade and keep syncing.',
+    'f4.title': 'Autostart &amp; settings',
+    'f4.body': 'Launch at login via XDG autostart, single-instance window restore, and a standalone native settings window for the daemon, port and credentials.',
+    'f5.title': 'Automatic updates',
+    'f5.body': 'A daily background check against an Ed25519-signed manifest. SyncPilot asks before downloading, verifies the signature, and never touches rslsync state.',
+    'f6.title': 'Secure by default',
+    'f6.body': 'The Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy — no login prompts, and the daemon never serves an unauthenticated request.',
+    'how.title': 'Up and running in three steps',
+    'how.sub': 'Same feel as installing the official client on any other platform.',
+    's1.title': 'Install',
+    's1.body': 'Grab the deb, rpm, AppImage or tar.gz from the release page — GTK 4 and WebKitGTK come with Ubuntu 24.04+.',
+    's2.title': 'Launch',
+    's2.body': 'SyncPilot starts the official daemon and hands the window to the official interface. No rslsync yet? One click fetches it.',
+    's3.title': 'Sync',
+    's3.body': 'Activate and add folders through the official wizard — exactly like on Windows and macOS.',
+    'secure.text': '<b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon&apos;s credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.',
+    'download.title': 'Get SyncPilot',
+    'download.sub': 'Install and run. After that SyncPilot keeps itself current — a daily signed-manifest check asks before downloading. The official rslsync binary is fetched on first start if missing.',
+    'dl.sub': 'Linux · x64 / arm64 · signed update manifest',
+    'footer.legal-pre': 'SyncPilot is free software under',
+    'footer.legal-post': 'and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.',
+    'footer.source': 'Source on GitHub'
+  },
+  zh: {
+    'nav.features': '功能',
+    'nav.docs': '文档',
+    'nav.download': '下载',
+    'hero.eyebrow': 'Linux 桌面版 Resilio Sync 客户端',
+    'hero.h1a': '原汁原味的 Resilio Sync 体验，',
+    'hero.h1b': '终于登陆 Linux。',
+    'hero.sub': 'SyncPilot 把<strong>官方 Resilio Web UI</strong>装进原生桌面窗口，并在背后托管官方 <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> 守护进程。每一屏都是官方界面——无需重新学习。',
+    'hero.download': '下载',
+    'hero.source': '在 GitHub 查看',
+    'hero.trust': '<b>deb · rpm · AppImage · tar.gz</b> &nbsp;—&nbsp; x64 / arm64（Ubuntu 24.04+）&nbsp;—&nbsp; 免费开源，AGPL-3.0',
+    'features.title': '关键处用官方，<br />该原生处就原生。',
+    'features.sub': '文件夹、伙伴、传输、偏好设置、激活——全部是官方 Resilio 界面，版本与你的 rslsync 构建一致。SyncPilot 补齐了官方在 Linux 上缺失的一切。',
+    'f1.title': '零界面偏差',
+    'f1.body': '窗口内嵌的就是官方 Resilio Web UI——与 Windows、macOS 客户端相同的界面与工作流，没有任何会落后的二次实现。',
+    'f2.title': '守护进程全生命周期',
+    'f2.body': '一键启停，可接管已在运行的守护进程；崩溃看门狗按指数退避自动重启。还可选在应用退出后继续保活。',
+    'f3.title': '首次运行与升级',
+    'f3.body': '机器上还没有 rslsync？一键从官方 CDN 下载，经 sha256 校验装入 <code>~/.local/bin</code>。数据路径跨版本不变，解压新版即可继续同步。',
+    'f4.title': '自启与设置',
+    'f4.body': 'XDG autostart 开机自启、单实例窗口唤起，还有独立的原生设置窗口管理守护进程、端口与凭据。',
+    'f5.title': '自动更新',
+    'f5.body': '每天后台检查一次 Ed25519 签名的 manifest，下载前必先询问、验签通过才落盘；rslsync 数据绝不触碰。',
+    'f6.title': '默认安全',
+    'f6.body': 'Web UI 仅留在 <code>127.0.0.1</code>，经注入认证的环回代理访问——不弹登录框，守护进程绝不响应未认证请求。',
+    'how.title': '三步上手',
+    'how.sub': '与在其他平台安装官方客户端的体验一致。',
+    's1.title': '安装',
+    's1.body': '从 release 页获取 deb、rpm、AppImage 或 tar.gz，安装即用——GTK 4 与 WebKitGTK 在 Ubuntu 24.04+ 上系统自带。',
+    's2.title': '启动',
+    's2.body': 'SyncPilot 启动官方守护进程，并把窗口交给官方界面。还没有 rslsync？一键获取。',
+    's3.title': '同步',
+    's3.body': '通过官方向导完成激活并添加文件夹——与 Windows、macOS 上完全一致。',
+    'secure.text': '<b>你的密钥与文件永不出机。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。所有 P2P 流量均由官方二进制处理。',
+    'download.title': '获取 SyncPilot',
+    'download.sub': '安装即用。之后 SyncPilot 会保持自我更新——每天按签名 manifest 检查一次，下载前必先询问。缺失官方 rslsync 二进制时，会在首次启动时自动获取。',
+    'dl.sub': 'Linux · x64 / arm64 · 签名更新 manifest',
+    'footer.legal-pre': 'SyncPilot 为',
+    'footer.legal-post': '自由软件，与 Resilio, Inc. 无隶属关系。「Resilio Sync」为其所有者的商标。',
+    'footer.source': 'GitHub 查看源码'
+  }
+};
+
+const LANG_OVERRIDE_KEY = 'syncpilot-lang-override-v2';
+const LEGACY_LANGUAGE_KEY = 'syncpilot-lang';
 
 function readLanguageOverride() {
   try { const v = localStorage.getItem(LANG_OVERRIDE_KEY); return v === 'zh' || v === 'en' ? v : null; } catch (e) { return null; }
 }
 function detectBrowserLanguage() {
   const locale = (navigator.languages && navigator.languages[0]) || navigator.language || '';
-  if (!locale) return 'en';
+  if (!locale) return 'zh';
   return String(locale).toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
 }
-function applyLanguage(lang, persist) {
-  if (persist) { try { localStorage.setItem(LANG_OVERRIDE_KEY, lang); } catch (e) { /* private mode */ } }
-  document.querySelectorAll('[data-en],[data-zh]').forEach((el) => {
-    const text = el.getAttribute('data-' + lang);
-    if (text === null) return;
-    const hasElementChildren = Array.from(el.children).some((c) => c.nodeType === 1);
-    if (hasElementChildren && /<\w/.test(text)) el.innerHTML = text; else el.textContent = text;
+function applyLanguage(lang) {
+  const dict = i18n[lang] || i18n.zh;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key] !== undefined) el.textContent = dict[key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-html');
+    if (dict[key] !== undefined) el.innerHTML = dict[key];
   });
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   const label = document.getElementById('current-lang-label');
@@ -403,12 +540,21 @@ function applyLanguage(lang, persist) {
 }
 window.setLanguage = function (lang) {
   if (lang !== 'zh' && lang !== 'en') return;
-  applyLanguage(lang, true);
+  try { localStorage.setItem(LANG_OVERRIDE_KEY, lang); } catch (e) { /* private mode */ }
+  applyLanguage(lang);
 };
 try { localStorage.removeItem(LEGACY_LANGUAGE_KEY); } catch (e) { /* private mode */ }
-applyLanguage(readLanguageOverride() || detectBrowserLanguage(), false);
+applyLanguage(readLanguageOverride() || detectBrowserLanguage());
 window.addEventListener('languagechange', () => {
-  if (!readLanguageOverride()) applyLanguage(detectBrowserLanguage(), false);
+  if (!readLanguageOverride()) applyLanguage(detectBrowserLanguage());
+});
+
+// Theme toggle: persists an explicit choice; the head script handles the
+// system-preference default without flashing.
+document.getElementById('theme-btn').addEventListener('click', function () {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('syncpilot-theme', next); } catch (e) { /* private mode */ }
 });
 </script>
 </body>
