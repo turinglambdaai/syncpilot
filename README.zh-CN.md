@@ -2,9 +2,9 @@
 
 [Resilio Sync](https://www.resilio.com/individuals/)（`rslsync`）的 Linux 原生桌面壳——在桌面窗口内嵌**官方 Resilio Web UI**，界面与操作流程和官方 Windows/macOS 客户端完全一致，并补齐 Linux 缺的部分：守护进程管理、开机自启、崩溃看护和官方二进制首次运行安装。
 
-[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/syncpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/syncpilot/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-[English](README.md) · **中文** · 🌐 [syncpilot.jrtx.site](https://syncpilot.jrtx.site/)
+[English](README.md) · **中文**
 
 SyncPilot 在原生窗口内运行并管理官方 `rslsync` 守护进程，窗口里显示的就是官方 Resilio Web UI。它仅通过环回地址与守护进程通信——密钥与文件永不离开你的机器。
 <p align="center">
@@ -25,12 +25,21 @@ SyncPilot 以 [Rivet](https://github.com/turinglambdaai/rivet) 构建：一份 R
 
 ## 诚实缺口
 
-- **仅有 tar.gz**——暂无 deb/rpm/AppImage 打包；0.4.x 的包仍保留在[发布页](https://github.com/turinglambdaai/syncpilot/releases)
 - **更新不自动替换**——更新器会下载并通过签名校验新 tar.gz，但应用更新仍是手动解压覆盖应用目录
 
 ## 安装
 
-从 [Releases](https://github.com/turinglambdaai/syncpilot/releases) 下载 `syncpilot-<版本>-linux-x64.tar.gz`，解压后运行 `RivetHost`（Ubuntu 24.04+ 自带所需的 GTK 4 / WebKitGTK 6.0；其余依赖已捆绑或属系统基础库）。这个 tar.gz 是唯一的产物——SyncPilot 仅面向 Linux x64，暂无 deb/rpm/AppImage。每个发布都带 tar.gz 的 `.sha256` 校验文件和 Ed25519 签名的 `update-stable.json` manifest。
+从 [Releases](https://github.com/turinglambdaai/syncpilot/releases/latest) 获取安装包。每次发布都为 **x64** 与 **arm64** 提供完整矩阵：
+
+| 格式 | 文件（每版本） | 说明 |
+|---|---|---|
+| deb | `syncpilot-<版本>-linux-amd64.deb` · `…-arm64.deb` | 安装到 `/opt/syncpilot`，带桌面入口与图标 |
+| rpm | `syncpilot-<版本>-linux-x86_64.rpm` · `…-aarch64.rpm` | 与 deb 同一载荷 |
+| AppImage | `syncpilot-<版本>-linux-x64.AppImage` · `…-arm64.AppImage` | 自带 GTK4 依赖闭包——比构建镜像更老的发行版也能跑 |
+| tar.gz | `syncpilot-<版本>-linux-x64.tar.gz` · `…-arm64.tar.gz` | 解压运行 `RivetHost`；也是应用内更新器下载并校验的更新载荷 |
+| 便携 zip | `syncpilot-<版本>-linux-x64.zip` · `…-arm64.zip` | 与 tar.gz 同布局 |
+
+每个文件都带 `.sha256` 校验文件，另有每个架构的合并 `SHA256SUMS`、CycloneDX SBOM 与第三方声明，以及应用内更新器消费的 Ed25519 签名 `update-stable.json` manifest。Ubuntu 24.04+ 自带所需的 GTK 4 / WebKitGTK 6.0；其余依赖已捆绑或属系统基础库。
 
 若未检测到官方 `rslsync` 二进制（自动探测覆盖 `~/.local/bin`、`/usr/bin`、`/usr/local/bin`、`/opt/resilio-sync` 和 `$PATH`），SyncPilot 会在首次启动时提供从 Resilio CDN 一键下载（sha256 校验，装入 `~/.local/bin`）；也可以自行安装后在**设置**里指定路径。
 

@@ -2,9 +2,9 @@
 
 A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) (`rslsync`) on Linux — it embeds the **official Resilio Web UI** in a desktop window, so the interface and workflow are exactly the official Windows/macOS client experience, with everything Linux was missing on top: daemon lifecycle, autostart, crash watchdog and a first-run installer for the official binary.
 
-[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/syncpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/syncpilot/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-**English** · [中文](README.zh-CN.md) · 🌐 [syncpilot.jrtx.site](https://syncpilot.jrtx.site/)
+**English** · [中文](README.zh-CN.md)
 
 SyncPilot runs and manages the official `rslsync` daemon behind a native window that shows the official Resilio Web UI. It talks to the daemon over loopback only — your keys and files never leave your machine.
 <p align="center">
@@ -25,12 +25,21 @@ SyncPilot is built on [Rivet](https://github.com/turinglambdaai/rivet): one Rack
 
 ## Honest gaps
 
-- **tar.gz only** — no deb/rpm/AppImage packaging yet; the 0.4.x packages remain on the [releases page](https://github.com/turinglambdaai/syncpilot/releases)
 - **Updates don't self-replace** — the updater downloads and signature-verifies the new tar.gz, but applying it is still a manual extract over the app directory
 
 ## Install
 
-Grab `syncpilot-<version>-linux-x64.tar.gz` from [Releases](https://github.com/turinglambdaai/syncpilot/releases), unpack it, and run `RivetHost` (Ubuntu 24.04+ ships the required GTK 4 / WebKitGTK 6.0; everything else is bundled or base-system). That tarball is the only artifact — SyncPilot is Linux x64 only, no deb/rpm/AppImage yet. Each release ships the tarball with a `<tarball>.sha256` checksum sidecar and the Ed25519-signed `update-stable.json` manifest.
+Grab an installer from [Releases](https://github.com/turinglambdaai/syncpilot/releases/latest). Every release ships the same matrix for **x64** and **arm64**:
+
+| Format | Files (per version) | Notes |
+|---|---|---|
+| deb | `syncpilot-<version>-linux-amd64.deb` · `…-arm64.deb` | installs under `/opt/syncpilot` with a desktop entry and icon |
+| rpm | `syncpilot-<version>-linux-x86_64.rpm` · `…-aarch64.rpm` | same payload as the deb |
+| AppImage | `syncpilot-<version>-linux-x64.AppImage` · `…-arm64.AppImage` | carries its own GTK4 dependency closure — runs on distributions older than the build image |
+| tar.gz | `syncpilot-<version>-linux-x64.tar.gz` · `…-arm64.tar.gz` | unpack and run `RivetHost`; also the update payload the in-app updater downloads and verifies |
+| portable zip | `syncpilot-<version>-linux-x64.zip` · `…-arm64.zip` | same layout as the tar.gz |
+
+Each file ships with a `.sha256` sidecar, plus a combined `SHA256SUMS`, a CycloneDX SBOM and third-party notices per architecture, and the Ed25519-signed `update-stable.json` manifest the in-app updater consumes. Ubuntu 24.04+ ships the required GTK 4 / WebKitGTK 6.0; everything else is bundled or base-system.
 
 If the official `rslsync` binary is not found (auto-detection covers `~/.local/bin`, `/usr/bin`, `/usr/local/bin`, `/opt/resilio-sync`, `$PATH`), SyncPilot offers to download it from Resilio's CDN on first launch (sha256-pinned, installed to `~/.local/bin`) — or install it yourself and point SyncPilot at it in **Settings**.
 
