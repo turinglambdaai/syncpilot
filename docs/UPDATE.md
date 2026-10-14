@@ -45,9 +45,8 @@ This page is the single source of truth; the README summarizes it.
 
 ## Known gaps
 
-- The artifact downloader does not follow 302 redirects yet
-  (`get-pure-port` in `download-with-progress!`,
-  `racket/syncpilot/updater.rkt`); upstream rivet#153 fixed only rivet's own
-  downloader. Tracked as [#1](https://github.com/turinglambdaai/syncpilot/issues/1).
-- No deb/rpm/AppImage packaging — updates swap only the extracted app
-  directory.
+- **Updates don't self-replace** — the verified `tar.gz` lands under
+  `<data-dir>/updates`; applying it stays a manual extract over the app
+  directory (tar.gz/zip installs), while deb/rpm installs update by simply
+  installing the new package. Either way the daemon's state
+  (`~/.local/share/site.jrtx.syncpilot`) is never touched.

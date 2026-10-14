@@ -2,6 +2,17 @@
 
 All notable changes to SyncPilot are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [0.8.2] - 2026-10-14
+
+### Added
+
+- **User manual on the product site** (`docs/guide.html`, linked from the nav as 手册): a five-minute start (per-format install → first-run fetch of the official rslsync binary → the official Web UI → daemon and settings), the core features (daemon start/stop and adoption, the crash watchdog and its status phases, config editing — including why hand edits to `rslsync.conf` never survive a daemon start, the loopback auth-injecting proxy, autostart and tray), and an FAQ (where data lives, root, the honest Linux-only platform story with desktop-environment differences, language and theme, updates — including how 0.7.x installs ride the same `update-stable.json` feed and why 0.6.1-and-earlier must update manually once — and uninstall). Same family mechanism as the landing page: one self-contained file, `data-i18n` keys resolved against a JS dictionary, defaulting to Chinese, with the shared light/dark theme. It cites the real product screenshot; no app functionality changes in this release.
+
+### Changed
+
+- **The site states the real asset matrix**: the hero trust row now lists zip beside deb · rpm · AppImage · tar.gz — the portable zips have shipped in every release since 0.7.0 — and the nav gains the manual link.
+- **docs/UPDATE.md caught up with 0.7.0**: its "known gaps" still claimed the artifact downloader ignores 302 redirects (fixed in 0.7.0, [#1](https://github.com/turinglambdaai/syncpilot/issues/1)) and that no deb/rpm/AppImage packaging exists (shipped since 0.7.0/0.8.0). It now states the one gap that remains: updates never self-replace, with the per-format apply path.
+
 ## [0.8.1] - 2026-10-14
 
 ### Added

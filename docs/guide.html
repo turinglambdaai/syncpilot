@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SyncPilot — 用户手册</title>
+<meta name="description" content="SyncPilot 用户手册：五分钟上手、守护进程管理、配置与代理、自启动，以及数据位置、权限、平台、更新与卸载等常见问题。" />
+<link rel="icon" type="image/png" href="icon.png" />
+<script>
+  // Theme anti-flash: resolve data-theme before first paint — localStorage
+  // when the visitor has picked manually, otherwise the system preference.
+  (function () {
+    var t;
+    try { t = localStorage.getItem('syncpilot-theme'); } catch (e) {}
+    if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* Family palette (same values as index.html), light & dark, zero deps. */
+:root {
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --ink: #1f1d1a;
+  --muted: #6b6660;
+  --muted-2: #8a847c;
+  --line: #e8e2d9;
+  --line-strong: #d9d2c6;
+  --accent: #c15f3c;
+  --accent-hover: #a94f30;
+  --accent-soft: #f7e5dd;
+  --accent-ink: #ffffff;
+  --nav-bg: rgba(250, 247, 242, 0.88);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --wrapper-width: 1080px;
+  --radius: 14px;
+  --radius-l: 20px;
+  --radius-s: 10px;
+  --shadow-card: 0 1px 2px rgba(31, 29, 26, 0.04), 0 8px 24px rgba(31, 29, 26, 0.05);
+  --shadow-hover: 0 2px 4px rgba(31, 29, 26, 0.05), 0 14px 40px rgba(31, 29, 26, 0.09);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:root[data-theme="light"] {
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --ink: #1f1d1a;
+  --muted: #6b6660;
+  --muted-2: #8a847c;
+  --line: #e8e2d9;
+  --line-strong: #d9d2c6;
+  --accent: #c15f3c;
+  --accent-hover: #a94f30;
+  --accent-soft: #f7e5dd;
+  --accent-ink: #ffffff;
+  --nav-bg: rgba(250, 247, 242, 0.88);
+}
+:root[data-theme="dark"] {
+  --bg: #1b1a18;
+  --surface: #24221f;
+  --ink: #ece9e2;
+  --muted: #a6a099;
+  --muted-2: #7d776f;
+  --line: #35322d;
+  --line-strong: #45413a;
+  --accent: #d08a6e;
+  --accent-hover: #e0977a;
+  --accent-soft: #3a2d27;
+  --accent-ink: #1b1a18;
+  --nav-bg: rgba(27, 26, 24, 0.88);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.30);
+  --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.30), 0 14px 40px rgba(0, 0, 0, 0.38);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.7;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.container { max-width: var(--wrapper-width); margin: 0 auto; padding: 0 24px; }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--accent-soft); color: var(--accent-hover); border-radius: 6px; padding: 1px 6px; }
+:root[data-theme="dark"] code { color: var(--accent); }
+a { color: var(--accent); }
+
+/* ---- nav (same as index.html) ---- */
+nav {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--nav-bg);
+  backdrop-filter: saturate(1.6) blur(14px);
+  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.nav-wrapper {
+  max-width: var(--wrapper-width); margin: 0 auto; padding: 0 24px;
+  height: 60px; display: flex; align-items: center; justify-content: space-between;
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 19px; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+.nav-brand img { width: 30px; height: 30px; border-radius: 8px; }
+.nav-links { display: flex; align-items: center; gap: 22px; }
+.nav-links a { color: var(--muted); text-decoration: none; font-size: 14.5px; font-weight: 500; }
+.nav-links a:hover { color: var(--accent); }
+.nav-links a.active { color: var(--accent); }
+.nav-links a.nav-cta {
+  background: var(--accent); color: var(--accent-ink); padding: 7px 16px; border-radius: 999px; font-weight: 600;
+}
+.nav-links a.nav-cta:hover { background: var(--accent-hover); color: var(--accent-ink); }
+.lang-dropdown-wrapper { position: relative; }
+.lang-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; color: var(--muted); padding: 6px 10px; border-radius: 8px; transition: color .2s, background .2s; }
+.lang-btn:hover { color: var(--accent); background: var(--accent-soft); }
+.lang-menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); box-shadow: var(--shadow-hover); padding: 6px; min-width: 132px; margin: 0; list-style: none; opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .18s var(--ease), visibility .18s var(--ease), transform .18s var(--ease); z-index: 10000; }
+.lang-dropdown-wrapper:hover .lang-menu, .lang-dropdown-wrapper:focus-within .lang-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.lang-menu li { margin: 0; }
+.lang-menu button { display: block; width: 100%; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; color: var(--ink); text-align: left; padding: 7px 12px; border-radius: 6px; transition: background .15s, color .15s; }
+.lang-menu button:hover, .lang-menu button:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+.theme-btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.theme-btn:hover { background: var(--accent-soft); color: var(--accent); }
+
+/* ---- manual hero ---- */
+.manual-hero { text-align: center; padding: 72px 0 40px; }
+.eyebrow {
+  display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--accent); background: var(--accent-soft);
+  padding: 5px 14px; border-radius: 999px; margin-bottom: 22px;
+}
+.manual-hero h1 {
+  font-size: clamp(34px, 5vw, 52px); line-height: 1.1; letter-spacing: -0.028em;
+  margin: 0 0 18px; font-weight: 700;
+}
+.manual-hero .lead { font-size: 19px; color: var(--muted); max-width: 620px; margin: 0 auto; }
+
+/* ---- two-column layout: sticky TOC + content ---- */
+.manual-layout {
+  display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 56px;
+  max-width: var(--wrapper-width); margin: 0 auto; padding: 16px 24px 80px;
+  align-items: start;
+}
+.manual-toc { position: sticky; top: 84px; font-size: 13.5px; }
+.manual-toc-group {
+  font-weight: 650; color: var(--ink); margin: 22px 0 8px; font-size: 13px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.manual-toc-group:first-child { margin-top: 0; }
+.manual-toc a { display: block; color: var(--muted); text-decoration: none; padding: 4px 0 4px 14px; border-left: 2px solid var(--line); transition: color .15s, border-color .15s; }
+.manual-toc a:hover { color: var(--accent); }
+.manual-toc a.active { color: var(--accent); border-left-color: var(--accent); }
+@media (max-width: 900px) {
+  .manual-layout { grid-template-columns: 1fr; gap: 8px; }
+  .manual-toc { display: none; }
+}
+
+/* ---- content sections ---- */
+.manual-section { padding: 26px 0 14px; scroll-margin-top: 76px; }
+.manual-h2 { display: flex; align-items: center; gap: 10px; font-size: clamp(24px, 3vw, 30px); letter-spacing: -0.02em; margin: 0 0 14px; font-weight: 700; }
+.h2-emoji { font-size: 0.9em; }
+.manual-section > p { color: var(--muted); font-size: 15.5px; margin: 0 0 14px; }
+.manual-section b { color: var(--ink); }
+.manual-section ol { color: var(--muted); font-size: 15.5px; padding-left: 22px; margin: 0 0 14px; }
+.manual-section ol li { margin-bottom: 12px; }
+.manual-section ol li::marker { color: var(--accent); font-weight: 650; }
+
+.dl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin: 4px 0 16px; }
+.dl-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow-card); }
+.dl-item h4 { margin: 0 0 6px; font-size: 14.5px; font-weight: 650; }
+.dl-item p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+.code-block {
+  background: #1e1e22; color: #e8e6e3; border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s); padding: 16px 18px; margin: 6px 0 18px;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.65;
+  overflow-x: auto; white-space: pre;
+}
+.code-block .comment { color: #8b8b93; }
+.code-block .prompt { color: #d08a6e; font-weight: 700; }
+
+.callout {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--accent-soft); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 20px; margin: 6px 0 18px;
+}
+.callout-title { font-weight: 650; font-size: 14.5px; margin-bottom: 3px; color: var(--ink); }
+.callout-body { color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+.manual-shot {
+  display: block; width: 100%; height: auto; margin: 8px 0 8px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.manual-hint { font-size: 12.5px; color: var(--muted-2); margin: 0 0 10px; }
+
+footer {
+  border-top: 1px solid var(--line); padding: 34px 24px; text-align: center;
+  color: var(--muted-2); font-size: 13.5px;
+}
+footer a { color: var(--muted); text-decoration: none; font-weight: 500; }
+footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-wrapper">
+    <a class="nav-brand" href="index.html"><img src="icon.png" alt="" />SyncPilot</a>
+    <div class="nav-links">
+      <a href="index.html#features" data-i18n="nav.features">功能</a>
+      <a href="guide.html" class="active" data-i18n="nav.guide">手册</a>
+      <a href="https://github.com/turinglambdaai/syncpilot">GitHub</a>
+      <div class="lang-dropdown-wrapper">
+        <button class="lang-btn" type="button" aria-label="Switch language">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          <span id="current-lang-label">简体中文</span>
+        </button>
+        <ul class="lang-menu">
+          <li><button type="button" onclick="setLanguage('en')">English</button></li>
+          <li><button type="button" onclick="setLanguage('zh')">简体中文</button></li>
+        </ul>
+      </div>
+      <button class="theme-btn" id="theme-btn" type="button" aria-label="Toggle theme">◐</button>
+      <a class="nav-cta" href="index.html#download" data-i18n="nav.download">下载</a>
+    </div>
+  </div>
+</nav>
+
+<section class="manual-hero">
+  <div class="container">
+    <div class="eyebrow" data-i18n="hero.eyebrow">使用手册</div>
+    <h1 data-i18n="hero.h1">把 SyncPilot 用明白</h1>
+    <p class="lead" data-i18n="hero.lead">安装、守护进程、设置、更新与常见问题——短句，动词开头，一页说清。</p>
+  </div>
+</section>
+
+<div class="manual-layout">
+
+  <aside class="manual-toc" id="toc">
+    <div class="manual-toc-group" data-i18n="toc.start">上手</div>
+    <a href="#quickstart" data-i18n="toc.quickstart">五分钟上手</a>
+    <div class="manual-toc-group" data-i18n="toc.core">核心功能</div>
+    <a href="#daemon" data-i18n="toc.daemon">守护进程启停</a>
+    <a href="#watchdog" data-i18n="toc.watchdog">看门狗与状态</a>
+    <a href="#config" data-i18n="toc.config">配置编辑</a>
+    <a href="#proxy" data-i18n="toc.proxy">端口与代理</a>
+    <a href="#autostart" data-i18n="toc.autostart">自启动与托盘</a>
+    <div class="manual-toc-group" data-i18n="toc.faq">常见问题</div>
+    <a href="#faq-data" data-i18n="toc.faq-data">数据存在哪里？</a>
+    <a href="#faq-root" data-i18n="toc.faq-root">需要 root 吗？</a>
+    <a href="#faq-platform" data-i18n="toc.faq-platform">支持哪些平台？</a>
+    <a href="#faq-language" data-i18n="toc.faq-language">怎么换语言和主题？</a>
+    <a href="#faq-update" data-i18n="toc.faq-update">怎么更新？</a>
+    <a href="#faq-uninstall" data-i18n="toc.faq-uninstall">怎么卸载？</a>
+  </aside>
+
+  <main>
+
+    <!-- =================== Quick start =================== -->
+    <section class="manual-section" id="quickstart">
+      <h2 class="manual-h2"><span class="h2-emoji">🚀</span><span data-i18n="q.title">五分钟上手</span></h2>
+      <p data-i18n="q.intro">装好、启动、连上 Resilio Sync。到这里就能用了——其余内容都是可选的。</p>
+      <ol>
+        <li data-i18n-html="q.s1"><strong>安装。</strong>到 <a href="https://github.com/turinglambdaai/syncpilot/releases/latest">Releases</a> 页选对应架构的包：<code>deb</code> 用 <code>sudo apt install ./…deb</code>，<code>rpm</code> 用 <code>sudo dnf install ./…rpm</code>，<code>AppImage</code> 加可执行权限直接运行。不想安装就解压 <code>tar.gz</code> / <code>zip</code>，运行其中的 <code>RivetHost</code>。x64 与 arm64 全格式齐备。</li>
+        <li data-i18n-html="q.s2"><strong>首次启动。</strong>从应用菜单打开 SyncPilot（deb/rpm 装在 <code>/opt/syncpilot</code>，带桌面入口）。还没有官方 <code>rslsync</code> 二进制？启动页一键从 Resilio 官方 CDN 下载（约 15 MB，sha256 校验后装入 <code>~/.local/bin</code>）。也可以自行安装后到设置里指定路径——自动探测覆盖 <code>~/.local/bin</code>、<code>/usr/bin</code>、<code>/usr/local/bin</code>、<code>/opt/resilio-sync</code> 和 <code>$PATH</code>。</li>
+        <li data-i18n-html="q.s3"><strong>连上 Resilio Sync。</strong>窗口里加载的就是<strong>官方 Web UI</strong>。在官方面板登录或激活、添加同步文件夹——与 Windows、macOS 上完全一致，没有要重新学的东西。</li>
+        <li data-i18n="q.s4">管好守护进程。SyncPilot 默认随应用启动并看护 rslsync：崩了按退避自动重启，退出应用默认保活。设置窗口的 Daemon 卡片可随时重启。</li>
+        <li data-i18n="q.s5">按需调整。设置 → Desktop 卡片：开机自启、关闭到托盘、界面语言。改端口后按提示重启守护进程生效。</li>
+      </ol>
+      <img class="manual-shot" src="screenshot.png" alt="SyncPilot 窗口：内嵌的官方 Resilio Web UI" data-alt-en="The SyncPilot window embedding the official Resilio Web UI" data-alt-zh="SyncPilot 窗口：内嵌的官方 Resilio Web UI" loading="lazy" />
+      <p class="manual-hint" data-i18n="q.hint">以上为 SyncPilot（Linux）运行官方界面的真实软件截图。</p>
+    </section>
+
+    <!-- =================== Daemon lifecycle =================== -->
+    <section class="manual-section" id="daemon">
+      <h2 class="manual-h2"><span class="h2-emoji">🔄</span><span data-i18n="d.title">守护进程启停</span></h2>
+      <p data-i18n="d.intro">SyncPilot 管理官方 <code>rslsync</code> 守护进程的一生：启动、接管、停止、保活。</p>
+      <div class="dl-grid">
+        <div class="dl-item">
+          <h4 data-i18n="d.start">启动</h4>
+          <p data-i18n="d.start-body">默认随应用一起启动。也接管已在运行的守护进程——systemd 服务、上次会话遗留的都行。不兼容的守护进程会明确报错，绝不盲接管。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="d.stop">停止 / 重启</h4>
+          <p data-i18n-html="d.stop-body">设置窗口 → Daemon 卡片 → <code>Restart Daemon</code>。退出应用时默认保活守护进程（keep-daemon-on-exit），关窗后照样同步；想一起退出就取消勾选。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="d.cred">凭据</h4>
+          <p data-i18n-html="d.cred-body">Web UI 登录名固定 <code>syncpilot</code>，密码首次启动随机生成。想换：Daemon 卡片 → <code>Regenerate Web UI password</code>。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="d.path">指定 rslsync 路径</h4>
+          <p data-i18n="d.path-body">自行安装了官方二进制？在 Daemon 卡片填入路径，或留空交给自动探测。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== Watchdog =================== -->
+    <section class="manual-section" id="watchdog">
+      <h2 class="manual-h2"><span class="h2-emoji">🛡️</span><span data-i18n="w.title">看门狗与状态</span></h2>
+      <p data-i18n="w.intro">守护进程有五个状态：stopped / starting / running / crashed / failed。状态不正常时窗口顶部出现细横幅；崩溃或启动失败会弹回启动页，给出具体错误和重试按钮。</p>
+      <div class="dl-grid">
+        <div class="dl-item">
+          <h4 data-i18n="w.dog">崩溃看护</h4>
+          <p data-i18n-html="w.dog-body">restart-on-crash 默认开。守护进程崩溃后按指数退避自动重启：<code>2s</code> 起、每次翻倍、<code>60s</code> 封顶——不会陷入疯狂重启。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="w.manual">不想等？</h4>
+          <p data-i18n-html="w.manual-body">设置 → Daemon → <code>Restart Daemon</code>，立即手动拉起。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== Config =================== -->
+    <section class="manual-section" id="config">
+      <h2 class="manual-h2"><span class="h2-emoji">⚙️</span><span data-i18n="c.title">配置编辑</span></h2>
+      <p data-i18n-html="c.intro">SyncPilot 在数据目录生成 <code>rslsync.conf</code>，再启动守护进程。文件权限 <code>0600</code>，凭据不出本机。</p>
+      <div class="code-block"><span class="comment"># 数据目录里的配置文件（路径见下方 FAQ）</span>
+<span class="prompt">$</span> cat ~/.local/share/site.jrtx.syncpilot/rslsync.conf</div>
+      <div class="callout">
+        <div>
+          <div class="callout-title">⚠️ <span data-i18n="c.warn-title">手改会被覆盖</span></div>
+          <div class="callout-body" data-i18n-html="c.warn-body">conf 在每次启动守护进程前重新生成。要改端口、设备名或凭据，请用设置窗口——手改 <code>rslsync.conf</code> 会在下次启动时丢失。</div>
+        </div>
+      </div>
+      <div class="dl-grid">
+        <div class="dl-item">
+          <h4 data-i18n="c.port">改端口</h4>
+          <p data-i18n-html="c.port-body">设置 → Device → 本地 API 端口（<code>1024–65535</code>）。保存后按提示重启守护进程生效。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="c.device">改设备名</h4>
+          <p data-i18n="c.device-body">设置 → Device。默认取自 /etc/hostname，改名即写入 conf。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== Port & proxy =================== -->
+    <section class="manual-section" id="proxy">
+      <h2 class="manual-h2"><span class="h2-emoji">🔌</span><span data-i18n="p.title">端口与代理</span></h2>
+      <p data-i18n-html="p.intro">窗口里的官方界面不直连守护进程。SyncPilot 在本机开一个随机端口的环回代理，给每个请求注入认证，再转发给 <code>127.0.0.1:&lt;端口&gt;</code> 上的 Web UI（默认 <code>38889</code>）。这层不需要配置。</p>
+      <div class="dl-grid">
+        <div class="dl-item">
+          <h4 data-i18n="p.nologin">无需登录</h4>
+          <p data-i18n="p.nologin-body">认证由代理注入，你永远看不到登录框；守护进程绝不响应未认证请求。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="p.loopback">仅环回</h4>
+          <p data-i18n="p.loopback-body">Web UI 只绑定 127.0.0.1，外部机器无法访问。所有 P2P 流量由官方 rslsync 自己处理，SyncPilot 不经手。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="p.secret">密码不回显</h4>
+          <p data-i18n-html="p.secret-body">Web UI 密码只写进本地 conf 与设置文件，不通过 RPC 回显到任何界面。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== Autostart & tray =================== -->
+    <section class="manual-section" id="autostart">
+      <h2 class="manual-h2"><span class="h2-emoji">🖥️</span><span data-i18n="a.title">自启动与托盘</span></h2>
+      <p data-i18n="a.intro">都在设置 → Desktop 卡片里。</p>
+      <div class="dl-grid">
+        <div class="dl-item">
+          <h4 data-i18n="a.login">开机自启</h4>
+          <p data-i18n="a.login-body">打开 Launch at login，写入 XDG autostart 项；关掉即移除。随自启拉起的窗口可从托盘找回。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="a.tray">关闭到托盘</h4>
+          <p data-i18n="a.tray-body">默认开。点关闭只是隐藏窗口，托盘菜单 Open 回来；退出请走托盘 Quit。桌面没有托盘宿主时该项置灰——关窗即退出应用，保活的守护进程继续同步。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="a.single">单实例</h4>
+          <p data-i18n="a.single-body">重复启动只会唤起已有窗口，不会开出第二个实例。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== FAQ: data =================== -->
+    <section class="manual-section" id="faq-data">
+      <h2 class="manual-h2"><span class="h2-emoji">📁</span><span data-i18n="fd.title">数据存在哪里？</span></h2>
+      <p data-i18n="fd.intro">全部在用户目录下，没有散落：</p>
+      <div class="code-block"><span class="comment"># 尊重 XDG_DATA_HOME，默认在这里</span>
+~/.local/share/site.jrtx.syncpilot/
+├─ syncpilot-settings.json   <span class="comment"># 应用设置（含生成的凭据）</span>
+├─ rslsync.conf              <span class="comment"># 守护进程配置（0600）</span>
+├─ storage/                  <span class="comment"># rslsync 内部状态（设备身份、共享密钥）</span>
+└─ updates/                  <span class="comment"># 更新器下载并验签过的 tar.gz</span></div>
+      <div class="dl-grid">
+        <div class="dl-item">
+          <h4 data-i18n="fd.bin">rslsync 本体</h4>
+          <p data-i18n-html="fd.bin-body">首启一键下载时装在 <code>~/.local/bin/rslsync</code>。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="fd.folders">同步的文件</h4>
+          <p data-i18n="fd.folders-body">在你通过官方界面添加的文件夹里，就是普通文件，随时可访问。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="fd.migrate">迁移</h4>
+          <p data-i18n="fd.migrate-body">整个数据目录一起搬即可，路径与格式跨版本不变。storage/ 里是设备身份，删了要重新激活，慎删。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== FAQ: root =================== -->
+    <section class="manual-section" id="faq-root">
+      <h2 class="manual-h2"><span class="h2-emoji">🔑</span><span data-i18n="fr.title">需要 root 吗？</span></h2>
+      <p data-i18n="fr.body">日常使用不需要。守护进程以你的用户身份运行，数据全在 <code>~</code> 下。只有安装 deb/rpm 时包管理器要一次管理员权限；AppImage 与 tar.gz/zip 从下载到运行全程免 root。</p>
+    </section>
+
+    <!-- =================== FAQ: platform =================== -->
+    <section class="manual-section" id="faq-platform">
+      <h2 class="manual-h2"><span class="h2-emoji">🐧</span><span data-i18n="fp.title">支持哪些平台？</span></h2>
+      <p data-i18n="fp.intro">SyncPilot 是 Linux-only 产品——GTK4 + WebKitGTK 6.0 宿主是唯一的第一方宿主，没有 macOS 或 Windows 版本。</p>
+      <div class="dl-grid">
+        <div class="dl-item">
+          <h4 data-i18n="fp.distro">发行版</h4>
+          <p data-i18n="fp.distro-body">Ubuntu 24.04+ 开箱即用（GTK 4 / WebKitGTK 6.0 系统自带）。更老的发行版选 AppImage——它自带 GTK4 依赖闭包。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="fp.arch">架构</h4>
+          <p data-i18n="fp.arch-body">x64 与 arm64，五种格式全齐备（deb / rpm / AppImage / tar.gz / zip）。</p>
+        </div>
+        <div class="dl-item">
+          <h4 data-i18n="fp.de">桌面环境</h4>
+          <p data-i18n="fp.de-body">托盘是否可用由桌面决定：没有托盘宿主时，设置里的关闭到托盘置灰。窗口深浅色跟随系统 GTK 主题。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== FAQ: language & theme =================== -->
+    <section class="manual-section" id="faq-language">
+      <h2 class="manual-h2"><span class="h2-emoji">🌐</span><span data-i18n="fl.title">怎么换语言和主题？</span></h2>
+      <p data-i18n="fl.lang">应用语言默认跟随系统。设置 → Desktop → Language，选 跟随系统 / 简体中文 / English；保存后下次启动生效（保存时会提示重启）。应用窗口样式跟随 GTK 系统主题。</p>
+      <p data-i18n="fl.site">本站（产品页）右上有语言和 ◐ 主题切换，选择会被记住；不选则跟随浏览器语言与系统深浅色。</p>
+    </section>
+
+    <!-- =================== FAQ: update =================== -->
+    <section class="manual-section" id="faq-update">
+      <h2 class="manual-h2"><span class="h2-emoji">⬆️</span><span data-i18n="fu.title">怎么更新？</span></h2>
+      <p data-i18n-html="fu.intro">应用内更新器每天静默检查一次 Ed25519 签名的 <code>update-stable.json</code> feed。想立刻查：设置 → <code>Check for updates</code>（不受 24 小时节流限制）。</p>
+      <ol>
+        <li data-i18n="fu.s1">有新版 → 应用内下载。字节数与 SHA-256 先对签名 manifest 核验，通过才交给你。</li>
+        <li data-i18n="fu.s2">验证过的 tar.gz 落在数据目录的 updates/ 下，并有打开文件夹的入口。</li>
+        <li data-i18n-html="fu.s3">手动应用：把 tar.gz 解压覆盖应用目录（tar.gz / zip 安装的用户），重启 <code>RivetHost</code>。deb / rpm 用户更简单：直接下载安装新版包即可。</li>
+      </ol>
+      <div class="callout">
+        <div>
+          <div class="callout-title">🔒 <span data-i18n="fu.safe-title">rslsync 数据绝不触碰</span></div>
+          <div class="callout-body" data-i18n="fu.safe-body">更新器只写 updates/ 目录；设置、凭据、storage/ 与已同步文件全部原样保留。</div>
+        </div>
+      </div>
+      <p data-i18n-html="fu.legacy">0.7.x 起用的就是这条 <code>update-stable.json</code> feed——在应用内「检查更新」即可直接升上来。0.6.1 及更早版本的下载器有 302 重定向缺陷（0.7.0 已修复），请手动下载新安装包升级一次，此后一切自动。</p>
+    </section>
+
+    <!-- =================== FAQ: uninstall =================== -->
+    <section class="manual-section" id="faq-uninstall">
+      <h2 class="manual-h2"><span class="h2-emoji">🗑️</span><span data-i18n="fm.title">怎么卸载？</span></h2>
+      <ol>
+        <li data-i18n="fm.s1">先关自启：设置 → Desktop → Launch at login 关掉（会移除自启项）。</li>
+        <li data-i18n-html="fm.s2">删应用：<code>deb</code> 用 <code>sudo apt remove syncpilot</code>；<code>rpm</code> 用 <code>sudo dnf remove syncpilot</code>；AppImage / tar.gz / zip 删文件或目录即可。</li>
+        <li data-i18n-html="fm.s3">删数据（可选）：<code>rm -rf ~/.local/share/site.jrtx.syncpilot</code>；rslsync 本体若是 SyncPilot 代装的，再删 <code>~/.local/bin/rslsync</code>。</li>
+      </ol>
+      <div class="callout">
+        <div>
+          <div class="callout-title">⚠️ <span data-i18n="fm.warn-title">删数据前想清楚</span></div>
+          <div class="callout-body" data-i18n="fm.warn-body">已同步文件夹里的文件不受影响；但删除数据目录会丢设备身份与共享密钥，删前确认不再需要。</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <span data-i18n="footer.legal-pre">SyncPilot 为</span> <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> <span data-i18n="footer.legal-post">自由软件，与 Resilio, Inc. 无隶属关系。「Resilio Sync」为其所有者的商标。</span><br /><br />
+  <a href="index.html" data-i18n="footer.home">返回首页</a> · <a href="https://github.com/turinglambdaai/syncpilot" data-i18n="footer.source">GitHub 查看源码</a>
+</footer>
+
+<script>
+// i18n (family standard, same keys mechanism as index.html): data-i18n
+// resolved against this dictionary; the static page is Chinese (zh-CN) and
+// the explicit choice persists — otherwise the browser locale decides.
+const pageMetadata = {
+  en: {
+    title: 'SyncPilot — User manual',
+    description: 'SyncPilot user manual: five-minute start, daemon management, config and proxy, autostart, plus FAQ on data paths, permissions, platforms, updates and uninstall.'
+  },
+  zh: {
+    title: 'SyncPilot — 用户手册',
+    description: 'SyncPilot 用户手册：五分钟上手、守护进程管理、配置与代理、自启动，以及数据位置、权限、平台、更新与卸载等常见问题。'
+  }
+};
+const i18n = {
+  en: {
+    'nav.features': 'Features',
+    'nav.guide': 'Manual',
+    'nav.download': 'Download',
+    'hero.eyebrow': 'User Manual',
+    'hero.h1': 'Everything SyncPilot can do',
+    'hero.lead': 'Install, daemon, settings, updates, and FAQ — short sentences, verb first, one page.',
+    'toc.start': 'Get started',
+    'toc.quickstart': 'Five-minute start',
+    'toc.core': 'Core',
+    'toc.daemon': 'Daemon start / stop',
+    'toc.watchdog': 'Watchdog & status',
+    'toc.config': 'Config editing',
+    'toc.proxy': 'Port & proxy',
+    'toc.autostart': 'Autostart & tray',
+    'toc.faq': 'FAQ',
+    'toc.faq-data': 'Where is my data?',
+    'toc.faq-root': 'Do I need root?',
+    'toc.faq-platform': 'Which platforms?',
+    'toc.faq-language': 'Language & theme',
+    'toc.faq-update': 'How do I update?',
+    'toc.faq-uninstall': 'How do I uninstall?',
+    'q.title': 'Five-minute start',
+    'q.intro': 'Install, launch, connect to Resilio Sync. That is the whole tutorial — everything below is optional.',
+    'q.s1': '<strong>Install.</strong> Pick your architecture on the <a href="https://github.com/turinglambdaai/syncpilot/releases/latest">Releases</a> page: <code>deb</code> via <code>sudo apt install ./…deb</code>, <code>rpm</code> via <code>sudo dnf install ./…rpm</code>, or make the <code>AppImage</code> executable and run it. No install wanted? Unpack the <code>tar.gz</code> / <code>zip</code> and run <code>RivetHost</code>. All formats ship for x64 and arm64.',
+    'q.s2': '<strong>First launch.</strong> Open SyncPilot from the app menu (deb/rpm install under <code>/opt/syncpilot</code> with a desktop entry). No official <code>rslsync</code> binary yet? The boot page fetches it from Resilio’s official CDN in one click (~15 MB, sha256-verified into <code>~/.local/bin</code>). Prefer your own install? Point SyncPilot at it in Settings — auto-detection covers <code>~/.local/bin</code>, <code>/usr/bin</code>, <code>/usr/local/bin</code>, <code>/opt/resilio-sync</code> and <code>$PATH</code>.',
+    'q.s3': '<strong>Connect to Resilio Sync.</strong> The window embeds the <strong>official Web UI</strong>. Sign in or activate, add synced folders — exactly like on Windows and macOS. Nothing to re-learn.',
+    'q.s4': 'Mind the daemon. SyncPilot starts and supervises rslsync by default: crashes restart with backoff, the daemon survives app exit. Restart any time from the Daemon card in Settings.',
+    'q.s5': 'Tune it. Settings → Desktop: launch at login, close-to-tray, UI language. Port changes apply after the daemon restart, as the toast says.',
+    'q.hint': 'The screenshot is the real SyncPilot (Linux) build running the official UI.',
+    'd.title': 'Daemon start / stop',
+    'd.intro': 'SyncPilot owns the official <code>rslsync</code> daemon’s whole life: start, adopt, stop, keep alive.',
+    'd.start': 'Start',
+    'd.start-body': 'Starts with the app by default. Also adopts an already-running daemon — a systemd service or one left over from a previous session. An incompatible daemon is refused with a clear error, never blindly adopted.',
+    'd.stop': 'Stop / restart',
+    'd.stop-body': 'Settings → Daemon card → <code>Restart Daemon</code>. On app exit the daemon keeps running by default (keep-daemon-on-exit) and syncs on with the window closed; uncheck it to quit together.',
+    'd.cred': 'Credentials',
+    'd.cred-body': 'The Web UI login is fixed <code>syncpilot</code>; the password is generated randomly on first launch. Change it: Daemon card → <code>Regenerate Web UI password</code>.',
+    'd.path': 'Point at your rslsync',
+    'd.path-body': 'Installed the official binary yourself? Enter the path on the Daemon card, or leave it empty for auto-detection.',
+    'w.title': 'Watchdog & status',
+    'w.intro': 'The daemon has five phases: stopped / starting / running / crashed / failed. Non-running phases show a thin top banner; a crash or failure flips back to the boot page with the specific error and a Retry button.',
+    'w.dog': 'Crash watchdog',
+    'w.dog-body': 'restart-on-crash is on by default. After a crash the daemon restarts with exponential backoff: <code>2s</code>, doubling, capped at <code>60s</code> — no frantic restart loops.',
+    'w.manual': 'Don’t want to wait?',
+    'w.manual-body': 'Settings → Daemon → <code>Restart Daemon</code> brings it back immediately.',
+    'c.title': 'Config editing',
+    'c.intro': 'SyncPilot generates <code>rslsync.conf</code> in the data directory, then starts the daemon. The file is chmod <code>0600</code>; credentials never leave the machine.',
+    'c.warn-title': 'Hand edits get overwritten',
+    'c.warn-body': 'The conf is regenerated before every daemon start. Change port, device name or credentials in the Settings window — hand edits to <code>rslsync.conf</code> are lost on the next start.',
+    'c.port': 'Change the port',
+    'c.port-body': 'Settings → Device → local API port (<code>1024–65535</code>). Save, then restart the daemon as the toast suggests.',
+    'c.device': 'Change the device name',
+    'c.device-body': 'Settings → Device. Defaults to /etc/hostname; a new name is written into the conf.',
+    'p.title': 'Port & proxy',
+    'p.intro': 'The official UI in the window never talks to the daemon directly. SyncPilot runs a loopback proxy on a random local port, injects authentication into every request, and forwards to the Web UI on <code>127.0.0.1:&lt;port&gt;</code> (default <code>38889</code>). This layer needs no configuration.',
+    'p.nologin': 'No login prompt',
+    'p.nologin-body': 'Auth is injected by the proxy, so you never see a login box; the daemon never serves an unauthenticated request.',
+    'p.loopback': 'Loopback only',
+    'p.loopback-body': 'The Web UI binds to 127.0.0.1 only — no other machine can reach it. All P2P traffic is handled by the official rslsync itself; SyncPilot never touches it.',
+    'p.secret': 'Password never echoed',
+    'p.secret-body': 'The Web UI password is written only to the local conf and settings file; it is never echoed back over RPC to any UI.',
+    'a.title': 'Autostart & tray',
+    'a.intro': 'All on the Settings → Desktop card.',
+    'a.login': 'Launch at login',
+    'a.login-body': 'Turn on to write an XDG autostart entry; turn off to remove it. Windows launched at login can be restored from the tray.',
+    'a.tray': 'Close to tray',
+    'a.tray-body': 'On by default. Clicking close only hides the window; the tray’s Open brings it back, Quit in the tray menu exits. On desktops without a tray host the row is insensitive — closing the window exits the app while the daemon keeps syncing.',
+    'a.single': 'Single instance',
+    'a.single-body': 'Launching again only presents the existing window; a second instance never appears.',
+    'fd.title': 'Where is my data?',
+    'fd.intro': 'Everything lives under your home directory. Nothing scattered:',
+    'fd.bin': 'The rslsync binary',
+    'fd.bin-body': 'One-click first-run install puts it at <code>~/.local/bin/rslsync</code>.',
+    'fd.folders': 'Synced files',
+    'fd.folders-body': 'In the folders you added through the official UI — plain files, always accessible.',
+    'fd.migrate': 'Migration',
+    'fd.migrate-body': 'Move the whole data directory; paths and formats never change between versions. storage/ holds the device identity — deleting it means re-activation, so think twice.',
+    'fr.title': 'Do I need root?',
+    'fr.body': 'Not for everyday use. The daemon runs as your user and all data stays under <code>~</code>. Only installing the deb/rpm needs the package manager’s admin rights once; AppImage and tar.gz/zip run without root at all.',
+    'fp.title': 'Which platforms?',
+    'fp.intro': 'SyncPilot is a Linux-only product — the GTK4 + WebKitGTK 6.0 host is the only first-party host. There is no macOS or Windows version.',
+    'fp.distro': 'Distributions',
+    'fp.distro-body': 'Ubuntu 24.04+ works out of the box (GTK 4 / WebKitGTK 6.0 come with the system). For older distributions pick the AppImage — it carries its own GTK4 dependency closure.',
+    'fp.arch': 'Architectures',
+    'fp.arch-body': 'x64 and arm64, all five formats (deb / rpm / AppImage / tar.gz / zip).',
+    'fp.de': 'Desktop environments',
+    'fp.de-body': 'Tray availability depends on the desktop: without a tray host, close-to-tray in Settings is insensitive. Window light/dark follows the system GTK theme.',
+    'fl.title': 'Language & theme',
+    'fl.lang': 'The app language follows the system by default. Settings → Desktop → Language: follow system / 简体中文 / English; it applies on the next launch (a toast reminds you to restart). Window styling follows the system GTK theme.',
+    'fl.site': 'This website has a language switcher and a ◐ theme toggle at the top right; your choice is remembered. Without one, the browser locale and system appearance decide.',
+    'fu.title': 'How do I update?',
+    'fu.intro': 'The in-app updater silently checks the Ed25519-signed <code>update-stable.json</code> feed once a day. Check now: Settings → <code>Check for updates</code> (bypasses the 24-hour throttle).',
+    'fu.s1': 'Update available → download in-app. Size and SHA-256 are verified against the signed manifest before anything is trusted.',
+    'fu.s2': 'The verified tar.gz lands under updates/ in the data directory, with an open-folder handoff.',
+    'fu.s3': 'Apply manually: extract the tar.gz over the app directory (tar.gz / zip installs) and restart <code>RivetHost</code>. Simpler for deb / rpm: download and install the new package.',
+    'fu.safe-title': 'rslsync data is never touched',
+    'fu.safe-body': 'The updater only writes under updates/. Settings, credentials, storage/ and synced files all stay exactly as they are.',
+    'fu.legacy': 'Installs from 0.7.x already use this same <code>update-stable.json</code> feed — just run “Check for updates” in the app to come up. 0.6.1 and earlier carry a 302-redirect flaw in the downloader (fixed in 0.7.0): update manually once, and everything is automatic from there.',
+    'fm.title': 'How do I uninstall?',
+    'fm.s1': 'Turn off autostart first: Settings → Desktop → Launch at login (this removes the autostart entry).',
+    'fm.s2': 'Remove the app: <code>deb</code> via <code>sudo apt remove syncpilot</code>; <code>rpm</code> via <code>sudo dnf remove syncpilot</code>; AppImage / tar.gz / zip — just delete the file or directory.',
+    'fm.s3': 'Remove data (optional): <code>rm -rf ~/.local/share/site.jrtx.syncpilot</code>; if SyncPilot installed rslsync for you, also delete <code>~/.local/bin/rslsync</code>.',
+    'fm.warn-title': 'Think before deleting data',
+    'fm.warn-body': 'Files inside your synced folders are not affected; but deleting the data directory loses the device identity and share keys. Make sure you no longer need them.',
+    'footer.legal-pre': 'SyncPilot is free software under',
+    'footer.legal-post': 'and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.',
+    'footer.home': 'Home',
+    'footer.source': 'Source on GitHub'
+  },
+  zh: {
+    'nav.features': '功能',
+    'nav.guide': '手册',
+    'nav.download': '下载',
+    'hero.eyebrow': '使用手册',
+    'hero.h1': '把 SyncPilot 用明白',
+    'hero.lead': '安装、守护进程、设置、更新与常见问题——短句，动词开头，一页说清。',
+    'toc.start': '上手',
+    'toc.quickstart': '五分钟上手',
+    'toc.core': '核心功能',
+    'toc.daemon': '守护进程启停',
+    'toc.watchdog': '看门狗与状态',
+    'toc.config': '配置编辑',
+    'toc.proxy': '端口与代理',
+    'toc.autostart': '自启动与托盘',
+    'toc.faq': '常见问题',
+    'toc.faq-data': '数据存在哪里？',
+    'toc.faq-root': '需要 root 吗？',
+    'toc.faq-platform': '支持哪些平台？',
+    'toc.faq-language': '怎么换语言和主题？',
+    'toc.faq-update': '怎么更新？',
+    'toc.faq-uninstall': '怎么卸载？',
+    'q.title': '五分钟上手',
+    'q.intro': '装好、启动、连上 Resilio Sync。到这里就能用了——其余内容都是可选的。',
+    'q.s1': '<strong>安装。</strong>到 <a href="https://github.com/turinglambdaai/syncpilot/releases/latest">Releases</a> 页选对应架构的包：<code>deb</code> 用 <code>sudo apt install ./…deb</code>，<code>rpm</code> 用 <code>sudo dnf install ./…rpm</code>，<code>AppImage</code> 加可执行权限直接运行。不想安装就解压 <code>tar.gz</code> / <code>zip</code>，运行其中的 <code>RivetHost</code>。x64 与 arm64 全格式齐备。',
+    'q.s2': '<strong>首次启动。</strong>从应用菜单打开 SyncPilot（deb/rpm 装在 <code>/opt/syncpilot</code>，带桌面入口）。还没有官方 <code>rslsync</code> 二进制？启动页一键从 Resilio 官方 CDN 下载（约 15 MB，sha256 校验后装入 <code>~/.local/bin</code>）。也可以自行安装后到设置里指定路径——自动探测覆盖 <code>~/.local/bin</code>、<code>/usr/bin</code>、<code>/usr/local/bin</code>、<code>/opt/resilio-sync</code> 和 <code>$PATH</code>。',
+    'q.s3': '<strong>连上 Resilio Sync。</strong>窗口里加载的就是<strong>官方 Web UI</strong>。在官方面板登录或激活、添加同步文件夹——与 Windows、macOS 上完全一致，没有要重新学的东西。',
+    'q.s4': '管好守护进程。SyncPilot 默认随应用启动并看护 rslsync：崩了按退避自动重启，退出应用默认保活。设置窗口的 Daemon 卡片可随时重启。',
+    'q.s5': '按需调整。设置 → Desktop 卡片：开机自启、关闭到托盘、界面语言。改端口后按提示重启守护进程生效。',
+    'q.hint': '以上为 SyncPilot（Linux）运行官方界面的真实软件截图。',
+    'd.title': '守护进程启停',
+    'd.intro': 'SyncPilot 管理官方 <code>rslsync</code> 守护进程的一生：启动、接管、停止、保活。',
+    'd.start': '启动',
+    'd.start-body': '默认随应用一起启动。也接管已在运行的守护进程——systemd 服务、上次会话遗留的都行。不兼容的守护进程会明确报错，绝不盲接管。',
+    'd.stop': '停止 / 重启',
+    'd.stop-body': '设置窗口 → Daemon 卡片 → <code>Restart Daemon</code>。退出应用时默认保活守护进程（keep-daemon-on-exit），关窗后照样同步；想一起退出就取消勾选。',
+    'd.cred': '凭据',
+    'd.cred-body': 'Web UI 登录名固定 <code>syncpilot</code>，密码首次启动随机生成。想换：Daemon 卡片 → <code>Regenerate Web UI password</code>。',
+    'd.path': '指定 rslsync 路径',
+    'd.path-body': '自行安装了官方二进制？在 Daemon 卡片填入路径，或留空交给自动探测。',
+    'w.title': '看门狗与状态',
+    'w.intro': '守护进程有五个状态：stopped / starting / running / crashed / failed。状态不正常时窗口顶部出现细横幅；崩溃或启动失败会弹回启动页，给出具体错误和重试按钮。',
+    'w.dog': '崩溃看护',
+    'w.dog-body': 'restart-on-crash 默认开。守护进程崩溃后按指数退避自动重启：<code>2s</code> 起、每次翻倍、<code>60s</code> 封顶——不会陷入疯狂重启。',
+    'w.manual': '不想等？',
+    'w.manual-body': '设置 → Daemon → <code>Restart Daemon</code>，立即手动拉起。',
+    'c.title': '配置编辑',
+    'c.intro': 'SyncPilot 在数据目录生成 <code>rslsync.conf</code>，再启动守护进程。文件权限 <code>0600</code>，凭据不出本机。',
+    'c.warn-title': '手改会被覆盖',
+    'c.warn-body': 'conf 在每次启动守护进程前重新生成。要改端口、设备名或凭据，请用设置窗口——手改 <code>rslsync.conf</code> 会在下次启动时丢失。',
+    'c.port': '改端口',
+    'c.port-body': '设置 → Device → 本地 API 端口（<code>1024–65535</code>）。保存后按提示重启守护进程生效。',
+    'c.device': '改设备名',
+    'c.device-body': '设置 → Device。默认取自 /etc/hostname，改名即写入 conf。',
+    'p.title': '端口与代理',
+    'p.intro': '窗口里的官方界面不直连守护进程。SyncPilot 在本机开一个随机端口的环回代理，给每个请求注入认证，再转发给 <code>127.0.0.1:&lt;端口&gt;</code> 上的 Web UI（默认 <code>38889</code>）。这层不需要配置。',
+    'p.nologin': '无需登录',
+    'p.nologin-body': '认证由代理注入，你永远看不到登录框；守护进程绝不响应未认证请求。',
+    'p.loopback': '仅环回',
+    'p.loopback-body': 'Web UI 只绑定 127.0.0.1，外部机器无法访问。所有 P2P 流量由官方 rslsync 自己处理，SyncPilot 不经手。',
+    'p.secret': '密码不回显',
+    'p.secret-body': 'Web UI 密码只写进本地 conf 与设置文件，不通过 RPC 回显到任何界面。',
+    'a.title': '自启动与托盘',
+    'a.intro': '都在设置 → Desktop 卡片里。',
+    'a.login': '开机自启',
+    'a.login-body': '打开 Launch at login，写入 XDG autostart 项；关掉即移除。随自启拉起的窗口可从托盘找回。',
+    'a.tray': '关闭到托盘',
+    'a.tray-body': '默认开。点关闭只是隐藏窗口，托盘菜单 Open 回来；退出请走托盘 Quit。桌面没有托盘宿主时该项置灰——关窗即退出应用，保活的守护进程继续同步。',
+    'a.single': '单实例',
+    'a.single-body': '重复启动只会唤起已有窗口，不会开出第二个实例。',
+    'fd.title': '数据存在哪里？',
+    'fd.intro': '全部在用户目录下，没有散落：',
+    'fd.bin': 'rslsync 本体',
+    'fd.bin-body': '首启一键下载时装在 <code>~/.local/bin/rslsync</code>。',
+    'fd.folders': '同步的文件',
+    'fd.folders-body': '在你通过官方界面添加的文件夹里，就是普通文件，随时可访问。',
+    'fd.migrate': '迁移',
+    'fd.migrate-body': '整个数据目录一起搬即可，路径与格式跨版本不变。storage/ 里是设备身份，删了要重新激活，慎删。',
+    'fr.title': '需要 root 吗？',
+    'fr.body': '日常使用不需要。守护进程以你的用户身份运行，数据全在 <code>~</code> 下。只有安装 deb/rpm 时包管理器要一次管理员权限；AppImage 与 tar.gz/zip 从下载到运行全程免 root。',
+    'fp.title': '支持哪些平台？',
+    'fp.intro': 'SyncPilot 是 Linux-only 产品——GTK4 + WebKitGTK 6.0 宿主是唯一的第一方宿主，没有 macOS 或 Windows 版本。',
+    'fp.distro': '发行版',
+    'fp.distro-body': 'Ubuntu 24.04+ 开箱即用（GTK 4 / WebKitGTK 6.0 系统自带）。更老的发行版选 AppImage——它自带 GTK4 依赖闭包。',
+    'fp.arch': '架构',
+    'fp.arch-body': 'x64 与 arm64，五种格式全齐备（deb / rpm / AppImage / tar.gz / zip）。',
+    'fp.de': '桌面环境',
+    'fp.de-body': '托盘是否可用由桌面决定：没有托盘宿主时，设置里的关闭到托盘置灰。窗口深浅色跟随系统 GTK 主题。',
+    'fl.title': '怎么换语言和主题？',
+    'fl.lang': '应用语言默认跟随系统。设置 → Desktop → Language，选 跟随系统 / 简体中文 / English；保存后下次启动生效（保存时会提示重启）。应用窗口样式跟随 GTK 系统主题。',
+    'fl.site': '本站（产品页）右上有语言和 ◐ 主题切换，选择会被记住；不选则跟随浏览器语言与系统深浅色。',
+    'fu.title': '怎么更新？',
+    'fu.intro': '应用内更新器每天静默检查一次 Ed25519 签名的 <code>update-stable.json</code> feed。想立刻查：设置 → <code>Check for updates</code>（不受 24 小时节流限制）。',
+    'fu.s1': '有新版 → 应用内下载。字节数与 SHA-256 先对签名 manifest 核验，通过才交给你。',
+    'fu.s2': '验证过的 tar.gz 落在数据目录的 updates/ 下，并有打开文件夹的入口。',
+    'fu.s3': '手动应用：把 tar.gz 解压覆盖应用目录（tar.gz / zip 安装的用户），重启 <code>RivetHost</code>。deb / rpm 用户更简单：直接下载安装新版包即可。',
+    'fu.safe-title': 'rslsync 数据绝不触碰',
+    'fu.safe-body': '更新器只写 updates/ 目录；设置、凭据、storage/ 与已同步文件全部原样保留。',
+    'fu.legacy': '0.7.x 起用的就是这条 <code>update-stable.json</code> feed——在应用内「检查更新」即可直接升上来。0.6.1 及更早版本的下载器有 302 重定向缺陷（0.7.0 已修复），请手动下载新安装包升级一次，此后一切自动。',
+    'fm.title': '怎么卸载？',
+    'fm.s1': '先关自启：设置 → Desktop → Launch at login 关掉（会移除自启项）。',
+    'fm.s2': '删应用：<code>deb</code> 用 <code>sudo apt remove syncpilot</code>；<code>rpm</code> 用 <code>sudo dnf remove syncpilot</code>；AppImage / tar.gz / zip 删文件或目录即可。',
+    'fm.s3': '删数据（可选）：<code>rm -rf ~/.local/share/site.jrtx.syncpilot</code>；rslsync 本体若是 SyncPilot 代装的，再删 <code>~/.local/bin/rslsync</code>。',
+    'fm.warn-title': '删数据前想清楚',
+    'fm.warn-body': '已同步文件夹里的文件不受影响；但删除数据目录会丢设备身份与共享密钥，删前确认不再需要。',
+    'footer.legal-pre': 'SyncPilot 为',
+    'footer.legal-post': '自由软件，与 Resilio, Inc. 无隶属关系。「Resilio Sync」为其所有者的商标。',
+    'footer.home': '返回首页',
+    'footer.source': 'GitHub 查看源码'
+  }
+};
+
+const LANG_OVERRIDE_KEY = 'syncpilot-lang-override-v2';
+const LEGACY_LANGUAGE_KEY = 'syncpilot-lang';
+
+function readLanguageOverride() {
+  try { const v = localStorage.getItem(LANG_OVERRIDE_KEY); return v === 'zh' || v === 'en' ? v : null; } catch (e) { return null; }
+}
+function detectBrowserLanguage() {
+  const locale = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+  if (!locale) return 'zh';
+  return String(locale).toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
+}
+function applyLanguage(lang) {
+  const dict = i18n[lang] || i18n.zh;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key] !== undefined) el.textContent = dict[key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-html');
+    if (dict[key] !== undefined) el.innerHTML = dict[key];
+  });
+  document.querySelectorAll('img[data-alt-en]').forEach((el) => {
+    const alt = lang === 'en' ? el.getAttribute('data-alt-en') : el.getAttribute('data-alt-zh');
+    if (alt) el.alt = alt;
+  });
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  const label = document.getElementById('current-lang-label');
+  if (label) label.textContent = lang === 'zh' ? '简体中文' : 'English';
+  const meta = pageMetadata[lang];
+  if (meta) {
+    document.title = meta.title;
+    const description = document.querySelector('meta[name="description"]');
+    if (description) description.setAttribute('content', meta.description);
+  }
+}
+window.setLanguage = function (lang) {
+  if (lang !== 'zh' && lang !== 'en') return;
+  try { localStorage.setItem(LANG_OVERRIDE_KEY, lang); } catch (e) { /* private mode */ }
+  applyLanguage(lang);
+};
+try { localStorage.removeItem(LEGACY_LANGUAGE_KEY); } catch (e) { /* private mode */ }
+applyLanguage(readLanguageOverride() || detectBrowserLanguage());
+window.addEventListener('languagechange', () => {
+  if (!readLanguageOverride()) applyLanguage(detectBrowserLanguage());
+});
+
+// Theme toggle: persists an explicit choice; the head script handles the
+// system-preference default without flashing.
+document.getElementById('theme-btn').addEventListener('click', function () {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('syncpilot-theme', next); } catch (e) { /* private mode */ }
+});
+
+// Active-TOC highlighting: mark the section currently in view.
+document.addEventListener('DOMContentLoaded', () => {
+  const links = document.querySelectorAll('.manual-toc a');
+  const sections = Array.from(links).map(a => {
+    const id = a.getAttribute('href').slice(1);
+    return { link: a, el: document.getElementById(id) };
+  }).filter(s => s.el);
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const match = sections.find(s => s.el === entry.target);
+        if (match) match.link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-80px 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s.el));
+});
+</script>
+</body>
+</html>
