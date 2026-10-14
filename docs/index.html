@@ -285,7 +285,7 @@ footer a:hover { color: var(--accent); }
     <h1 class="animate"><span data-i18n="hero.h1a">原汁原味的 Resilio Sync 体验，</span><br /><span class="soft" data-i18n="hero.h1b">终于登陆 Linux。</span></h1>
     <p class="hero-sub animate" data-i18n-html="hero.sub">SyncPilot 把<strong>官方 Resilio Web UI</strong>装进原生桌面窗口，并在背后托管官方 <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> 守护进程。每一屏都是官方界面——无需重新学习。</p>
     <div class="hero-actions animate">
-      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest" data-i18n="hero.download">下载</a>
+      <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest/download/syncpilot-linux-x64.deb" data-i18n="hero.download">下载</a>
       <a class="btn btn-secondary" href="https://github.com/turinglambdaai/syncpilot" data-i18n="hero.source">在 GitHub 查看</a>
     </div>
     <div class="trust-row animate" data-i18n-html="hero.trust"><b>deb · rpm · AppImage · tar.gz · zip</b> &nbsp;—&nbsp; x64 / arm64（Ubuntu 24.04+）&nbsp;—&nbsp; 免费开源，AGPL-3.0</div>
@@ -391,11 +391,12 @@ footer a:hover { color: var(--accent); }
       <p data-i18n="download.sub">安装即用。之后 SyncPilot 会保持自我更新——每天按签名 manifest 检查一次，下载前必先询问。缺失官方 rslsync 二进制时，会在首次启动时自动获取。</p>
     </div>
     <div class="dl-cards animate">
-      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/latest">
+      <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/latest/download/syncpilot-linux-x64.deb">
         <div class="dl-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></div>
         <div><b>deb · rpm · AppImage · tar.gz · zip</b><span data-i18n="dl.sub">Linux · x64 / arm64 · 签名更新 manifest</span></div>
       </a>
     </div>
+    <p style="text-align:center;margin-top:16px"><a href="https://github.com/turinglambdaai/syncpilot/releases" data-i18n="dl.all-releases">全部版本</a></p>
   </div>
 </section>
 
@@ -462,6 +463,7 @@ const i18n = {
     'download.title': 'Get SyncPilot',
     'download.sub': 'Install and run. After that SyncPilot keeps itself current — a daily signed-manifest check asks before downloading. The official rslsync binary is fetched on first start if missing.',
     'dl.sub': 'Linux · x64 / arm64 · signed update manifest',
+    'dl.all-releases': 'All releases',
     'footer.legal-pre': 'SyncPilot is free software under',
     'footer.legal-post': 'and is not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.',
     'footer.source': 'Source on GitHub'
@@ -559,6 +561,32 @@ document.getElementById('theme-btn').addEventListener('click', function () {
   document.documentElement.dataset.theme = next;
   try { localStorage.setItem('syncpilot-theme', next); } catch (e) { /* private mode */ }
 });
+
+// Platform-aware direct downloads: SyncPilot is Linux-only, so on Linux the
+// hero button and the dl-card point straight at the versionless alias for
+// the detected architecture; other desktops keep the neutral link to the
+// Releases page. Labels switch through the i18n dictionary below.
+(function () {
+  const BASE = 'https://github.com/turinglambdaai/syncpilot/releases/latest/download/';
+  const RELEASES = 'https://github.com/turinglambdaai/syncpilot/releases';
+  const ua = navigator.userAgent;
+  const isLinux = /Linux|X11/i.test(ua) && !/Android/i.test(ua);
+  const arch = /aarch64|arm/i.test(ua) ? 'arm64' : 'x64';
+  const style = document.createElement('style');
+  style.textContent = '.dl-card.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}';
+  document.head.appendChild(style);
+  if (isLinux) {
+    const url = BASE + 'syncpilot-linux-' + arch + '.deb';
+    document.querySelectorAll('a[data-i18n="hero.download"], .dl-card').forEach(a => { a.href = url; });
+    document.querySelector('.dl-card').classList.add('current');
+    i18n.zh['hero.download'] = '下载 Linux 版';
+    i18n.en['hero.download'] = 'Download for Linux';
+  } else {
+    document.querySelectorAll('a[data-i18n="hero.download"], .dl-card').forEach(a => { a.href = RELEASES; });
+  }
+  applyLanguage(readLanguageOverride() || detectBrowserLanguage());
+})();
+
 </script>
 </body>
 </html>

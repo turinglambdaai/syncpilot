@@ -153,3 +153,21 @@ jobs:
             *.tar.gz *.deb *.rpm *.AppImage *.zip \
             *.sbom.cdx.json *-THIRD_PARTY_NOTICES.txt \
             *.sha256 SHA256SUMS $update_asset
+      - name: Stable alias copies (versionless direct-download links)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Family rule: download buttons point at
+          # releases/latest/download/<alias>, so every release also ships
+          # versionless copies of the primary installers. SyncPilot is
+          # Linux-only: deb and AppImage per architecture. rivet names debs
+          # amd64/arm64 and AppImages x86_64/aarch64 — aliases normalize to
+          # the x64/arm64 family form.
+          mkdir -p stable-alias
+          cp "dist/syncpilot-${VERSION}-linux-amd64.deb" stable-alias/syncpilot-linux-x64.deb
+          cp "dist/syncpilot-${VERSION}-linux-arm64.deb" stable-alias/syncpilot-linux-arm64.deb
+          cp "dist/syncpilot-${VERSION}-linux-x86_64.AppImage" stable-alias/syncpilot-linux-x64.AppImage
+          cp "dist/syncpilot-${VERSION}-linux-aarch64.AppImage" stable-alias/syncpilot-linux-arm64.AppImage
+          gh release upload "$GITHUB_REF_NAME" stable-alias/* --clobber -R turinglambdaai/syncpilot
