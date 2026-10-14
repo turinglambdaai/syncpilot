@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation & manual
+    url: https://syncpilot.jrtx.site/guide.html
+    about: The user manual and FAQ — most setup questions are answered there.

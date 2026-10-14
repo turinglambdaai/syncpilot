@@ -125,15 +125,19 @@ jobs:
           # payloads the updater downloads, signed with the long-lived
           # syncpilot-2026-10 key. rivet 0.6.1's built-in manifest points
           # at the portable zip instead, which the SyncPilot updater does
-          # not consume. Missing secret → warn and publish without it.
+          # not consume. The script also emits the byte-identical twin
+          # update-manifest.json (family-standard name), so the release
+          # ships both names. Missing secret → warn and publish without
+          # either.
           update_asset=""
           if [[ -n "${UPDATE_ED25519_PRIVATE_KEY_B64:-}" ]]; then
             KEY_DER="$RUNNER_TEMP/update-ed25519-private.der"
             printf '%s' "$UPDATE_ED25519_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
             scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_DER"
             # gh release create resolves file args from their final working
-            # directory (dist/), so the manifest rides under its bare name.
-            update_asset="update-stable.json"
+            # directory (dist/), so the manifests ride under their bare
+            # names.
+            update_asset="update-stable.json update-manifest.json"
           else
             echo "::warning::UPDATE_ED25519_PRIVATE_KEY_B64 not set — release ships without update-stable.json"
           fi

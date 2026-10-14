@@ -14,11 +14,16 @@
 #                    form of the UPDATE_ED25519_PRIVATE_KEY_B64 CI secret
 #
 # Emits <dist-dir>/update-stable.json with one targz artifact per
-# architecture and versioned download URLs. rivet 0.6.1's built-in release
-# manifest would point at the portable zip, which the SyncPilot updater
-# does not consume — the updater fetches the tar.gz payload, so this script
-# signs the manifest the updater actually reads. Requires racket with the
-# pinned rivet linked (the release publish job installs it).
+# architecture and versioned download URLs, plus its byte-identical twin
+# <dist-dir>/update-manifest.json (the family-standard feed name — the
+# signature covers the payload, not the filename, so both names verify).
+# Current hosts still fetch update-stable.json; the twin exists so the
+# feed name can migrate client-side later without re-releasing.
+# rivet 0.6.1's built-in release manifest would point at the portable zip,
+# which the SyncPilot updater does not consume — the updater fetches the
+# tar.gz payload, so this script signs the manifest the updater actually
+# reads. Requires racket with the pinned rivet linked (the release publish
+# job installs it).
 set -euo pipefail
 
 TAG="${1:?usage: make-update-manifest.sh <tag> <dist-dir> <key-der-path>}"
@@ -105,3 +110,6 @@ RKT
 # rivet must be installed for the signer; the release publish job links a
 # checkout at the release pin.
 racket "$SCRIPT"
+
+# Dual-name feed: the same signed bytes under both names (see header).
+cp "$DIST/update-stable.json" "$DIST/update-manifest.json"

@@ -45,6 +45,9 @@ void show_message_dialog(std::string const& title, std::string const& body) {
   GtkWidget* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
   auto* text = gtk_label_new(body.c_str());
   gtk_label_set_wrap(GTK_LABEL(text), TRUE);
+  // Failure text (URLs, errno strings) must leave the screen with the
+  // user — selectable, so it can be copied into a bug report.
+  gtk_label_set_selectable(GTK_LABEL(text), TRUE);
   gtk_label_set_max_width_chars(GTK_LABEL(text), 60);
   gtk_widget_set_margin_top(text, 8);
   gtk_widget_set_margin_bottom(text, 8);

@@ -2,6 +2,35 @@
 
 All notable changes to SyncPilot are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **GitHub issue templates** (bug report + feature request) so feedback
+  lands structured: the bug form asks for the distro/desktop-environment
+  pair, the package shape and the rslsync binary provenance — the three
+  facts every Linux-only report needs — and points update failures at the
+  now-copyable dialog text. The manual (syncpilot.jrtx.site/guide.html)
+  is offered as a contact link before a blank issue.
+- **The release ships the signed feed under both names.** Release assets
+  carry `update-stable.json` — what shipped since 0.7.0 and what current
+  hosts still fetch — plus its byte-identical twin `update-manifest.json`
+  (the family-standard feed name; the signature covers the payload, not
+  the filename, so both verify). Zero client change this round; the twin
+  exists so the feed name can migrate client-side later without
+  re-releasing.
+
+### Changed
+
+- **The About card names the issue tracker.** The About text now ends
+  with `github.com/turinglambdaai/syncpilot/issues` (zh and en, plain
+  text in the i18n single source), beside the existing repo link — a bug
+  report starts one glance away from the About card that describes it.
+- **Update failure text is selectable.** The update dialogs' message
+  label (errors and status alike) is a selectable GTK label, so the exact
+  failure text — URLs, errno strings — can be copied out instead of
+  retyped.
+
 ## [0.8.2] - 2026-10-14
 
 ### Added

@@ -51,7 +51,7 @@
   "update.failedTitle": "更新失败",
   "update.downloadFailed": "下载失败：{error}",
   "settings.about": "关于",
-  "settings.aboutText": "SyncPilot v{version} —— Linux 上 Resilio Sync（rslsync）的非官方桌面外壳。窗口内展示的是官方 Resilio Web UI。AGPL-3.0。github.com/turinglambdaai/syncpilot",
+  "settings.aboutText": "SyncPilot v{version} —— Linux 上 Resilio Sync（rslsync）的非官方桌面外壳。窗口内展示的是官方 Resilio Web UI。AGPL-3.0。github.com/turinglambdaai/syncpilot；问题反馈：github.com/turinglambdaai/syncpilot/issues",
   "settings.save": "保存设置",
   "settings.saved": "设置已保存",
   "settings.savedRestartForPort": "已保存。重启守护进程以应用新端口。",

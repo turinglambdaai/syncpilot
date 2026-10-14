@@ -51,7 +51,7 @@
   "update.failedTitle": "Update failed",
   "update.downloadFailed": "Download failed: {error}",
   "settings.about": "About",
-  "settings.aboutText": "SyncPilot v{version} — an unofficial desktop shell for Resilio Sync (rslsync) on Linux. The window shows the official Resilio Web UI. AGPL-3.0. github.com/turinglambdaai/syncpilot",
+  "settings.aboutText": "SyncPilot v{version} — an unofficial desktop shell for Resilio Sync (rslsync) on Linux. The window shows the official Resilio Web UI. AGPL-3.0. github.com/turinglambdaai/syncpilot · Report an issue: github.com/turinglambdaai/syncpilot/issues",
   "settings.save": "Save Settings",
   "settings.saved": "Settings saved",
   "settings.savedRestartForPort": "Saved. Restart the daemon to apply the new port.",
