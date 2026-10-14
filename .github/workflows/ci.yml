@@ -3,11 +3,14 @@ on:
   push:
   pull_request:
 
-# Rivet is consumed as a tag-pinned Git source
-# (`https://github.com/turinglambdaai/rivet.git#v0.11.0`) — the hold-back
-# form rivet docs/ci.md prescribes for releases: every CI run and release
-# builds against the same released Rivet instead of drifting with the
-# package catalog's moving entry.
+# Rivet is consumed as a tag-pinned Git source — the hold-back form rivet
+# docs/ci.md prescribes for releases: every CI run and release builds
+# against the same released Rivet instead of drifting with the package
+# catalog's moving entry.
+env:
+  # Single source of truth for the rivet pin (same value as release.yml);
+  # every install step below references this so a bump is one edit.
+  RIVET_PIN: v0.11.0
 jobs:
   release-metadata:
     name: Release metadata (VERSION alignment)
@@ -25,15 +28,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: Bogdanp/setup-racket@v1.11
+      - uses: Bogdanp/setup-racket@v1.15
         with:
           version: stable
-      - name: Install Rivet v0.11.0 and crypto
+      - name: Install Rivet and crypto
         run: |
           # Tag-pinned Git source per rivet docs/ci.md — the catalog has one
           # moving entry per name and cannot select an older release. crypto
           # backs the app updater (direct dependency), not rivet.
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.11.0'
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
           raco pkg install --auto --no-docs crypto
       - name: Domain core tests
         run: raco test racket/
@@ -48,6 +51,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # GitHub does not allow expressions in `uses:`, so this action pin
+      # stays literal — keep it in sync with RIVET_PIN above.
       - name: Set up embeddable Racket CS
         uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@v0.11.0
 
@@ -64,13 +69,13 @@ jobs:
             libncurses-dev \
             xvfb
 
-      - name: Install Rivet v0.11.0 and crypto
+      - name: Install Rivet and crypto
         run: |
           # Installed after the embeddable runtime so the dependency closure
           # resolves against the minimal build — it ships no packages of its
           # own. Tag-pinned Git source per rivet docs/ci.md. crypto backs the
           # app updater (direct dependency).
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.11.0'
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
           raco pkg install --auto --no-docs crypto
 
       - name: Build backend bundle and host
