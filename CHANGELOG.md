@@ -4,6 +4,12 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-10-15
+
+The release-hygiene round: everything below tightens how SyncPilot ships
+and reports itself — feedback surfaces and release gates, no change to the
+app's own behaviour.
+
 ### Added
 
 - **GitHub issue templates** (bug report + feature request) so feedback
@@ -30,6 +36,23 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
   label (errors and status alike) is a selectable GTK label, so the exact
   failure text — URLs, errno strings — can be copied out instead of
   retyped.
+- **CI single-sources the rivet pin**: both workflows declare a
+  workflow-level `RIVET_PIN` env and every `raco pkg install` references
+  it, so a rivet bump is one edit per file (the `setup-embed-racket`
+  `uses:` pins stay literal — GitHub does not allow expressions there).
+  `setup-racket` rides along at v1.15.
+
+### Fixed
+
+- **The release preflight gates the generated client's version stamp.**
+  `check-release-version.sh` now reads `kVersion` from
+  `linux/GeneratedBackend.hpp` and requires it to equal `VERSION` (the
+  GeneratedBackend.swift gate autarx already had, ported) — 0.8.2 shipped
+  while the hpp still stamped 0.8.0 and nothing checked it. The stamp was
+  corrected after the fact, so this release is the first whose generated
+  client matches its version on day one; four gates (VERSION ==
+  rivet.rktd == updater identity == generated stamp, plus tag and
+  CHANGELOG) now stand between main and a mislabeled release.
 
 ## [0.8.2] - 2026-10-14
 
