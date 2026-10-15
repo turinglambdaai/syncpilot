@@ -12,5 +12,7 @@
         (module . "backend")
         (entry . "start")
         (protocol . 1)
+        (macos-icon . "assets/syncpilot.icns")
+        (windows-icon . "assets/syncpilot.ico")
         (linux-icon . "assets/icon-512.png")
         (linux-formats . ("deb" "rpm" "appimage")))
