@@ -52,10 +52,10 @@ std::string json_string(std::string const& s);
 // gets the body text it JSON.parse()s once more.
 void respond_result(unsigned long id, std::string const& json_value) {
   if (g_view == nullptr) return;
-  std::string script = "(window.btsync.cache[" + std::to_string(id) +
-                       "]||function(){})( " + json_value +
-                       ");delete window.btsync.cache[" + std::to_string(id) +
-                       "];";
+  std::fprintf(stderr, "bridge: deliver i=%lu payload=%.140s\n", id,
+               json_value.c_str());
+  std::string script = "(window.btsync.onResponse||function(i,p){var f=window.btsync.cache[i];if(f){f(p);delete window.btsync.cache[i];}})(" +
+                       std::to_string(id) + ", " + json_value + ");";
   webkit_web_view_evaluate_javascript(g_view, script.c_str(),
                                       static_cast<gssize>(script.size()),
                                       nullptr, nullptr, nullptr, nullptr,

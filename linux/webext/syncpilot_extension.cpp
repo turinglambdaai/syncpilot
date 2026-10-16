@@ -136,6 +136,21 @@ constexpr char kDiagScript[] = R"JS((function() {
   });
   window.addEventListener("load", function() {
     try {
+      if (window.btsync && window.btsync.onResponse) {
+        var orig = window.btsync.onResponse.bind(window.btsync);
+        window.btsync.onResponse = function(i, p) {
+          diag("ONRESP " + i + " " + String(p).slice(0, 90));
+          return orig(i, p);
+        };
+        var origCall = window.btsync.call.bind(window.btsync);
+        window.btsync.call = function(m, a) {
+          diag("THEIRCALL " + m);
+          return origCall(m, a);
+        };
+        diag("WRAPPED onResponse/call");
+      } else {
+        diag("WRAP-SKIP no onResponse");
+      }
       if (!window.jQuery || !window.app) { diag("LOADCHECK no jquery/app"); return; }
       diag("LOADCHECK btasync=" + typeof window.btasync +
            " callapi=" + (window.btasync ? typeof window.btasync.callapi : "-"));
