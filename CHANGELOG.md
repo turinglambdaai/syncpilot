@@ -11,6 +11,7 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ### Fixed
 
+- **The first-run rslsync installer works again**: `http-fetch` ran `bytes->string/utf-8` over the status value that `get-pure-port/headers` `#:status? #t` already returns as a string, so every successful 200 response died on a contract violation — the download card failed unconditionally on every machine, with the retry loop dressing it up as a network error ("check your network connection"). The status parsing now accepts the string shape (bytes kept as a guard for older net/url revisions) in a `response-code` helper covered by its own tests.
 - **SIGTERM shuts the app down instead of killing the backend under a living window** ([#3](https://github.com/turinglambdaai/syncpilot/issues/3)): OS signals bypass the GTK main loop, so the orderly teardown never ran — `systemd --user stop`, session logout and `killall` all left a zombie window over a dead backend. The rivet shutdown hook is now installed once the embedded runtime finishes booting: installing in `main()` loses the race to the Racket runtime's own SIGTERM handler, which is what kept the hook inert. Teardown is exactly-once across the GTK and signal paths, and each step traces into the host log.
 
 ## [0.8.0]
