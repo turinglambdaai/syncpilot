@@ -97,6 +97,22 @@ std::string json_string(std::string const& s) {
 
 // --------------------------------------------------------- args extraction
 
+// Parse a JSON object body; the parser object is leaked deliberately — one
+// small tree per bridge call, cheaper than wiring ownership through every
+// handler.
+JsonObject* args_object(std::string const& body) {
+  if (body.empty()) return nullptr;
+  JsonParser* parser = json_parser_new();
+  if (!json_parser_load_from_data(parser, body.data(),
+                                  static_cast<gssize>(body.size()), nullptr)) {
+    g_object_unref(parser);
+    return nullptr;
+  }
+  JsonNode* root = json_parser_get_root(parser);
+  if (root == nullptr || !JSON_NODE_HOLDS_OBJECT(root)) return nullptr;
+  return json_node_get_object(root);
+}
+
 bool args_string(JsonObject* args, char const* name, std::string* out) {
   if (args == nullptr || !json_object_has_member(args, name)) return false;
   JsonNode* node = json_object_get_member(args, name);
@@ -487,62 +503,83 @@ void dispatch_call(unsigned long id, std::string const& method,
 }
 
 // Entry point for window.webkit.messageHandlers.jsToNativeHandler
-// .postMessage: the page passes a JSON string {m: method, args, i: index}.
+// .postMessage. The UI's sendTheMessage passes a plain JS object
+// {m: method, args, i: index, t} — read the properties through JSC
+// directly; a JSON string form is accepted too for the bridge's own
+// bootstrap call.
 void on_bridge_message(WebKitUserContentManager* manager, JSCValue* value,
                        gpointer) {
   (void)manager;
-  if (value == nullptr || !jsc_value_is_string(value)) return;
-  char* body_cstr = jsc_value_to_string(value);
-  std::string const body = body_cstr != nullptr ? body_cstr : "";
-  g_free(body_cstr);
-
-  // The parser object keeps the node tree alive for the handler's duration;
-  // one small tree per call, cheaper than wiring ownership through
-  // dispatch_call.
-  JsonParser* parser = json_parser_new();
-  if (!json_parser_load_from_data(parser, body.data(),
-                                  static_cast<gssize>(body.size()), nullptr)) {
-    g_object_unref(parser);
-    return;
-  }
-  JsonNode* root = json_parser_get_root(parser);
-  if (root == nullptr || !JSON_NODE_HOLDS_OBJECT(root)) {
-    g_object_unref(parser);
-    return;
-  }
-  JsonObject* message = json_node_get_object(root);
+  if (value == nullptr) return;
 
   unsigned long id = 0;
-  if (json_object_has_member(message, "i")) {
-    JsonNode* id_node = json_object_get_member(message, "i");
-    if (id_node != nullptr && JSON_NODE_HOLDS_VALUE(id_node)) {
-      GValue id_value = G_VALUE_INIT;
-      json_node_get_value(id_node, &id_value);
-      if (G_VALUE_HOLDS_INT64(&id_value)) {
-        id = static_cast<unsigned long>(g_value_get_int64(&id_value));
-      } else if (G_VALUE_HOLDS_DOUBLE(&id_value)) {
-        id = static_cast<unsigned long>(g_value_get_double(&id_value));
-      }
-      g_value_unset(&id_value);
-    }
-  }
   std::string method;
-  if (json_object_has_member(message, "m")) {
-    JsonNode* method_node = json_object_get_member(message, "m");
-    if (method_node != nullptr && JSON_NODE_HOLDS_VALUE(method_node)) {
-      GValue method_value = G_VALUE_INIT;
-      json_node_get_value(method_node, &method_value);
-      if (G_VALUE_HOLDS_STRING(&method_value)) {
-        method = g_value_get_string(&method_value);
+  std::string body;
+  JsonObject* args = nullptr;
+
+  if (jsc_value_is_string(value)) {
+    char* body_cstr = jsc_value_to_string(value);
+    body = body_cstr != nullptr ? body_cstr : "";
+    g_free(body_cstr);
+    // The parser object keeps the node tree alive for the handler's
+    // duration; one small tree per call, cheaper than wiring ownership
+    // through dispatch_call.
+    JsonParser* parser = json_parser_new();
+    JsonObject* message = nullptr;
+    if (json_parser_load_from_data(parser, body.data(),
+                                   static_cast<gssize>(body.size()), nullptr)) {
+      JsonNode* root = json_parser_get_root(parser);
+      if (root != nullptr && JSON_NODE_HOLDS_OBJECT(root)) {
+        message = json_node_get_object(root);
       }
-      g_value_unset(&method_value);
     }
+    if (message == nullptr) return;
+    if (json_object_has_member(message, "i")) {
+      JsonNode* n = json_object_get_member(message, "i");
+      if (n != nullptr && JSON_NODE_HOLDS_VALUE(n)) {
+        GValue v = G_VALUE_INIT;
+        json_node_get_value(n, &v);
+        if (G_VALUE_HOLDS_INT64(&v)) id = static_cast<unsigned long>(g_value_get_int64(&v));
+        else if (G_VALUE_HOLDS_DOUBLE(&v)) id = static_cast<unsigned long>(g_value_get_double(&v));
+        g_value_unset(&v);
+      }
+    }
+    if (json_object_has_member(message, "m")) {
+      JsonNode* n = json_object_get_member(message, "m");
+      if (n != nullptr && JSON_NODE_HOLDS_VALUE(n)) {
+        GValue v = G_VALUE_INIT;
+        json_node_get_value(n, &v);
+        if (G_VALUE_HOLDS_STRING(&v)) method = g_value_get_string(&v);
+        g_value_unset(&v);
+      }
+    }
+    if (json_object_has_member(message, "args") &&
+        JSON_NODE_HOLDS_OBJECT(json_object_get_member(message, "args"))) {
+      args = json_object_get_object_member(message, "args");
+    }
+  } else if (jsc_value_is_object(value)) {
+    JSCValue* m_val = jsc_value_object_get_property(value, "m");
+    if (m_val != nullptr && jsc_value_is_string(m_val)) {
+      char* mc = jsc_value_to_string(m_val);
+      method = mc != nullptr ? mc : "";
+      g_free(mc);
+    }
+    JSCValue* i_val = jsc_value_object_get_property(value, "i");
+    if (i_val != nullptr && jsc_value_is_number(i_val)) {
+      id = static_cast<unsigned long>(jsc_value_to_int32(i_val));
+    }
+    JSCValue* a_val = jsc_value_object_get_property(value, "args");
+    if (a_val != nullptr && jsc_value_is_object(a_val)) {
+      char* json = jsc_value_to_json(a_val, 0);
+      if (json != nullptr) {
+        body = json;
+        args = args_object(body);  // parser leaked deliberately (see above)
+        g_free(json);
+      }
+    }
+  } else {
+    return;
   }
-  JsonObject* args = json_object_has_member(message, "args") &&
-                             JSON_NODE_HOLDS_OBJECT(
-                                 json_object_get_member(message, "args"))
-                         ? json_object_get_object_member(message, "args")
-                         : nullptr;
 
   if (g_view == nullptr || g_parent == nullptr) {
     respond_error(id, "bridge not ready");
@@ -581,8 +618,10 @@ void install_js_bridge(WebKitWebView* web_view, GtkWindow* parent) {
       webkit_web_view_get_user_content_manager(web_view);
   g_signal_connect(manager, "script-message-received::jsToNativeHandler",
                    G_CALLBACK(on_bridge_message), nullptr);
-  webkit_user_content_manager_register_script_message_handler(
+  gboolean registered = webkit_user_content_manager_register_script_message_handler(
       manager, "jsToNativeHandler", nullptr);
+  std::fprintf(stderr, "js-bridge: jsToNativeHandler registered: %s\n",
+               registered ? "yes" : "NO");
 }
 
 }  // namespace sp

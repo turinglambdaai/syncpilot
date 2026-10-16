@@ -41,14 +41,15 @@ constexpr char kBridgeScript[] = R"JS((function() {
     return new Promise(function(resolve) {
       // The native side answers by calling this resolver with the JSON
       // result text; errors resolve too, carrying an .error field.
-      window.btsync.cache[index] = resolve;
+      apiCache[index] = resolve;
       window.webkit.messageHandlers.jsToNativeHandler.postMessage(
           JSON.stringify({m: method, args: args === undefined ? null : args,
                           i: index}));
     });
   }
   call.index = 0;
-  var api = {parameter: null, cache: {}, call: call};
+  var apiCache = {};
+  var api = {parameter: null, cache: apiCache, __sp: 1, call: call};
   ["openpath", "openurl", "shownotification", "showchoosefolderdialog",
    "showchoosefiledialog", "copytoclipboard", "opensyspreferences",
    "callapi", "getuifile", "setcallback"].forEach(function(name) {
@@ -122,8 +123,13 @@ constexpr char kDiagScript[] = R"JS((function() {
   }, 2000);
   window.addEventListener("DOMContentLoaded", function() {
     try {
+      var mh = "none";
+      try { mh = JSON.stringify(Object.keys(window.webkit.messageHandlers)); } catch (e) { mh = "err " + e; }
       diag("DCL btasync=" + typeof window.btasync +
            " callapi=" + (window.btasync ? typeof window.btasync.callapi : "-") +
+           " btsyncMine=" + (window.btsync && window.btsync.__sp ? "yes" : "no") +
+           " cacheKeys=" + (window.btsync && window.btsync.cache ? Object.keys(window.btsync.cache).length : "-") +
+           " channels=" + mh +
            " utilsURL=" + (window.app && window.app.utils ?
                typeof window.app.utils.URLDeserialize : "no-app"));
     } catch (e) { diag("DCL-ERR " + e); }
