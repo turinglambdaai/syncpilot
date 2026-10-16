@@ -33,6 +33,7 @@ unsigned long g_dialog_id{0};             // the call awaiting the chooser
 std::string g_callback_name;              // setcallback target (core events)
 SoupSession* g_soup{nullptr};                 // callapi transport, lazy
 std::string g_proxy_origin;                   // scheme://host:port the UI is served from
+std::string g_webui_token;                    // token.html credential for forwarded calls
 
 // The marker the official WebKit client puts in the user agent; app.js keys
 // its isWebKitWebView flag (and therefore the btsync.call routing) on it.
@@ -168,9 +169,88 @@ void on_choose_response(GtkNativeDialog* native, int response, gpointer) {
 // apiRequestQueue/callback channel for async:true calls is unused here and
 // unimplemented.
 struct CallapiJob {
-  unsigned long id;  // the call awaiting the daemon's answer
-  SoupMessage* message;
+  unsigned long id;      // the call awaiting the daemon's answer
+  std::string type;      // GET / POST
+  std::string action;
+  std::string params;
+  bool retried;          // already re-bootstrapped the token once
+  SoupMessage* message{nullptr};
 };
+
+void start_api_call(CallapiJob* job);
+void on_callapi_sent(GObject* session, GAsyncResult* result, gpointer user_data);
+
+// The daemon gates /gui/ API actions on a WebUI token issued by
+// /gui/token.html plus the GUID cookie that rides the same session (the
+// web flow gets both through requestToken; desktop mode must provide them
+// itself). One session keeps the cookie jar; the token is fetched lazily
+// on the first call and refreshed whenever the daemon answers 400.
+void start_api_call(CallapiJob* job);
+void on_callapi_sent(GObject* session, GAsyncResult* result, gpointer user_data);
+
+void on_token_sent(GObject* session, GAsyncResult* result, gpointer user_data) {
+  auto* job = static_cast<CallapiJob*>(user_data);
+  GError* error = nullptr;
+  GInputStream* stream =
+      soup_session_send_finish(SOUP_SESSION(session), result, &error);
+  std::string body;
+  if (stream != nullptr) {
+    GOutputStream* out = g_memory_output_stream_new_resizable();
+    GError* splice = nullptr;
+    g_output_stream_splice(
+        out, stream,
+        static_cast<GOutputStreamSpliceFlags>(G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
+                                              G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET),
+        nullptr, &splice);
+    if (splice == nullptr) {
+      body.assign(
+          static_cast<gchar*>(g_memory_output_stream_get_data(
+              G_MEMORY_OUTPUT_STREAM(out))),
+          g_memory_output_stream_get_data_size(G_MEMORY_OUTPUT_STREAM(out)));
+    } else {
+      g_error_free(splice);
+    }
+    g_object_unref(out);
+  }
+  if (error != nullptr) g_error_free(error);
+  if (stream != nullptr) g_object_unref(stream);
+
+  // <html><div id='token' style='display:none;'>TOKEN</div></html>
+  std::size_t const begin = body.find("'>");
+  std::size_t const end = body.find("</div>", begin == std::string::npos ? 0 : begin);
+  if (begin != std::string::npos && end != std::string::npos && end > begin) {
+    g_webui_token = body.substr(begin + 2, end - begin - 2);
+  }
+  start_api_call(job);
+}
+
+void start_token_bootstrap(CallapiJob* job) {
+  SoupMessage* message =
+      soup_message_new("POST", (g_proxy_origin + "/gui/token.html").c_str());
+  soup_session_send_async(g_soup, message, G_PRIORITY_DEFAULT, nullptr,
+                          on_token_sent, job);
+}
+
+void start_api_call(CallapiJob* job) {
+  std::string url = g_proxy_origin + "/gui/?token=" + g_webui_token +
+                    "&action=" + job->action;
+  if (job->type != "POST" && !job->params.empty()) url += "&" + job->params;
+  SoupMessage* message =
+      soup_message_new(job->type == "POST" ? "POST" : "GET", url.c_str());
+  if (message == nullptr) {
+    respond_error(job->id, "bad callapi target");
+    delete job;
+    return;
+  }
+  if (job->type == "POST" && !job->params.empty()) {
+    GBytes* payload = g_bytes_new(job->params.data(), job->params.size());
+    soup_message_set_request_body_from_bytes(message, "application/json", payload);
+    g_bytes_unref(payload);
+  }
+  job->message = message;
+  soup_session_send_async(g_soup, message, G_PRIORITY_DEFAULT, nullptr,
+                          on_callapi_sent, job);
+}
 
 void on_callapi_sent(GObject* session, GAsyncResult* result, gpointer user_data) {
   auto* job = static_cast<CallapiJob*>(user_data);
@@ -179,6 +259,7 @@ void on_callapi_sent(GObject* session, GAsyncResult* result, gpointer user_data)
       soup_session_send_finish(SOUP_SESSION(session), result, &error);
   std::string body;
   bool sent = false;
+  guint status = 0;
   if (stream != nullptr) {
     GOutputStream* out = g_memory_output_stream_new_resizable();
     GError* splice = nullptr;
@@ -193,13 +274,22 @@ void on_callapi_sent(GObject* session, GAsyncResult* result, gpointer user_data)
               G_MEMORY_OUTPUT_STREAM(out))),
           g_memory_output_stream_get_data_size(G_MEMORY_OUTPUT_STREAM(out)));
       sent = true;
+      status = soup_message_get_status(job->message);
     } else {
       g_error_free(splice);
     }
     g_object_unref(out);
   }
+  if (sent && status == 400 && !job->retried) {
+    // The WebUI token went stale (token.html rotates them): fetch a fresh
+    // one and retry this call once before giving up.
+    g_webui_token.clear();
+    job->retried = true;
+    start_token_bootstrap(job);
+    g_object_unref(job->message);
+    return;
+  }
   if (sent) {
-    guint const status = soup_message_get_status(job->message);
     if (status < 200 || status >= 300) {
       body = "{\"error\":\"HTTP " + std::to_string(status) + " from the daemon\"}";
     }
@@ -219,29 +309,24 @@ void on_callapi_sent(GObject* session, GAsyncResult* result, gpointer user_data)
 // with the legacy benign stub so the UI keeps its web-fallback behavior.
 bool dispatch_callapi(unsigned long id, JsonObject* args) {
   if (g_proxy_origin.empty() || g_view == nullptr) return false;
-  if (g_soup == nullptr) g_soup = soup_session_new();
-
-  std::string type = "GET";
-  std::string action;
-  std::string params;
-  args_string(args, "type", &type);
-  args_string(args, "action", &action);
-  args_string(args, "params", &params);
-
-  std::string url = g_proxy_origin + "/gui/?action=" + action;
-  if (type != "POST" && !params.empty()) url += "&" + params;
-  SoupMessage* message =
-      soup_message_new(type == "POST" ? "POST" : "GET", url.c_str());
-  if (message == nullptr) return false;
-  if (type == "POST" && !params.empty()) {
-    GBytes* payload = g_bytes_new(params.data(), params.size());
-    soup_message_set_request_body_from_bytes(message, "application/json", payload);
-    g_bytes_unref(payload);
+  if (g_soup == nullptr) {
+    g_soup = soup_session_new();
+    // The GUID cookie gates API actions and rotates with responses; the jar
+    // keeps it in sync the way a browser would.
+    soup_session_add_feature(g_soup,
+                             SOUP_SESSION_FEATURE(soup_cookie_jar_new()));
   }
 
-  auto* job = new CallapiJob{id, message};
-  soup_session_send_async(g_soup, message, G_PRIORITY_DEFAULT, nullptr,
-                          on_callapi_sent, job);
+  auto* job = new CallapiJob{id, "GET", "", "", false};
+  args_string(args, "type", &job->type);
+  args_string(args, "action", &job->action);
+  args_string(args, "params", &job->params);
+
+  if (g_webui_token.empty()) {
+    start_token_bootstrap(job);
+  } else {
+    start_api_call(job);
+  }
   return true;
 }
 
