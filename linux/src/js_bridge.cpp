@@ -43,26 +43,29 @@ constexpr char kUaMarker[] = " SyncWebKitWebView";
 // JSON text for a string result, with quotes and escapes (defined below).
 std::string json_string(std::string const& s);
 
-// Answer the call `id` by evaluating __btsyncResolve in the page world.
-// An is_error reply rejects the call's promise with the payload message;
-// otherwise the payload is JSON-encoded result text ("" → null).
-void respond(unsigned long id, bool is_error, std::string const& payload) {
+// Answer the call `index` by invoking the resolver the UI parked in
+// window.btsync.cache[index] (sendTheMessage's fallback when postMessage
+// returns no promise). The resolver receives the result as a JSON text
+// string — the caller JSON.parse()s it once more; errors therefore travel
+// as a resolved {"error": …} value, which is the shape the request
+// wrapper's `.error` check expects.
+void respond_result(unsigned long id, std::string const& json_value) {
   if (g_view == nullptr) return;
-  std::string script = "__btsyncResolve(" + std::to_string(id) + ", " +
-                       (is_error ? "true" : "false") + ", " +
-                       json_string(payload) + ")";
+  std::string script = "(window.btsync.cache[" + std::to_string(id) +
+                       "]||function(){})( " + json_string(json_value) +
+                       ");delete window.btsync.cache[" + std::to_string(id) +
+                       "];";
   webkit_web_view_evaluate_javascript(g_view, script.c_str(),
                                       static_cast<gssize>(script.size()),
                                       nullptr, nullptr, nullptr, nullptr,
                                       nullptr);
 }
 
-void respond_result(unsigned long id, std::string const& json_value) {
-  respond(id, false, json_value);
-}
-
+// Transport/native failures surface as a resolved {"error": …} value —
+// rejecting would crash the UI's request wrapper on its missing .error
+// check (observed as a fully blank interface).
 void respond_error(unsigned long id, std::string const& message) {
-  respond(id, true, message);
+  respond_result(id, "{"error":" + json_string(message) + "}");
 }
 
 // JSON text for a string result, with quotes and escapes.
@@ -398,8 +401,8 @@ void dispatch_call(unsigned long id, std::string const& method,
   respond_result(id, "null");
 }
 
-// Entry point for window.webkit.messageHandlers.btsync.postMessage: the
-// page passes a JSON string {id, method, args}.
+// Entry point for window.webkit.messageHandlers.jsToNativeHandler
+// .postMessage: the page passes a JSON string {m: method, args, i: index}.
 void on_bridge_message(WebKitUserContentManager* manager, JSCValue* value,
                        gpointer) {
   (void)manager;
@@ -425,8 +428,8 @@ void on_bridge_message(WebKitUserContentManager* manager, JSCValue* value,
   JsonObject* message = json_node_get_object(root);
 
   unsigned long id = 0;
-  if (json_object_has_member(message, "id")) {
-    JsonNode* id_node = json_object_get_member(message, "id");
+  if (json_object_has_member(message, "i")) {
+    JsonNode* id_node = json_object_get_member(message, "i");
     if (id_node != nullptr && JSON_NODE_HOLDS_VALUE(id_node)) {
       GValue id_value = G_VALUE_INIT;
       json_node_get_value(id_node, &id_value);
@@ -439,8 +442,8 @@ void on_bridge_message(WebKitUserContentManager* manager, JSCValue* value,
     }
   }
   std::string method;
-  if (json_object_has_member(message, "method")) {
-    JsonNode* method_node = json_object_get_member(message, "method");
+  if (json_object_has_member(message, "m")) {
+    JsonNode* method_node = json_object_get_member(message, "m");
     if (method_node != nullptr && JSON_NODE_HOLDS_VALUE(method_node)) {
       GValue method_value = G_VALUE_INIT;
       json_node_get_value(method_node, &method_value);
@@ -491,10 +494,10 @@ void install_js_bridge(WebKitWebView* web_view, GtkWindow* parent) {
   // races the signal.
   WebKitUserContentManager* manager =
       webkit_web_view_get_user_content_manager(web_view);
-  g_signal_connect(manager, "script-message-received::btsync",
+  g_signal_connect(manager, "script-message-received::jsToNativeHandler",
                    G_CALLBACK(on_bridge_message), nullptr);
-  webkit_user_content_manager_register_script_message_handler(manager, "btsync",
-                                                              nullptr);
+  webkit_user_content_manager_register_script_message_handler(
+      manager, "jsToNativeHandler", nullptr);
 }
 
 }  // namespace sp

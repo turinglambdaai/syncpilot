@@ -9,14 +9,17 @@
 // page. The extension's window-object-cleared hook runs in the page world
 // before any page script, deterministically.
 //
-// Calls flow over a user script message channel: the injected object turns
-// every call into window.webkit.messageHandlers.btsync.postMessage(JSON)
-// and the UI process answers each one by evaluating __btsyncResolve in the
-// page (the call's promise is the reply channel). The previous transport —
-// fetch over a custom "syncpilot-bridge://" URI scheme — never delivered
-// non-GET requests: WebKit's fetch rejects them before the scheme handler
-// is consulted ("TypeError: Load failed"), so with the UI build that routes
-// its whole data plane through callapi the interface came up empty.
+// Calls flow over the official client's transport: the UI posts
+// {m: method, args, i: index} to window.webkit.messageHandlers
+// .jsToNativeHandler and — because our registration is the plain kind, so
+// postMessage returns nothing — parks the reply resolver in
+// window.btsync.cache[index]; the UI process delivers each answer by
+// calling that resolver back in the page. (The official macOS/Windows
+// client registers the channel with a reply and reads the returned
+// promise; the UI supports both shapes — see sendTheMessage in app.js.)
+// A previous attempt fetched over a custom "syncpilot-bridge://" URI
+// scheme; WebKit's fetch rejects POSTs to a custom scheme before the
+// scheme handler is consulted, so nothing ever arrived.
 //
 // Loaded from <app>/webext next to the host binary; the directory is
 // registered by the UI process before the first load (js_bridge.cpp).
@@ -33,25 +36,19 @@ namespace {
 // with the payload as the error message; an empty payload resolves null;
 // anything else is JSON-encoded result text.
 constexpr char kBridgeScript[] = R"JS((function() {
-  var pending = {};
-  var seq = 0;
   function call(method, args) {
-    var id = ++seq;
-    return new Promise(function(resolve, reject) {
-      pending[id] = {resolve: resolve, reject: reject};
-      window.webkit.messageHandlers.btsync.postMessage(
-          JSON.stringify({id: id, method: method,
-                          args: args === undefined ? null : args}));
+    var index = ++call.index;
+    return new Promise(function(resolve) {
+      // The native side answers by calling this resolver with the JSON
+      // result text; errors resolve too, carrying an .error field.
+      window.btsync.cache[index] = resolve;
+      window.webkit.messageHandlers.jsToNativeHandler.postMessage(
+          JSON.stringify({m: method, args: args === undefined ? null : args,
+                          i: index}));
     });
   }
-  window.__btsyncResolve = function(id, is_error, payload) {
-    var p = pending[id];
-    if (!p) return;
-    delete pending[id];
-    if (is_error) p.reject(new Error(payload));
-    else p.resolve(payload === "" ? null : JSON.parse(payload));
-  };
-  var api = {parameter: null, call: call};
+  call.index = 0;
+  var api = {parameter: null, cache: {}, call: call};
   ["openpath", "openurl", "shownotification", "showchoosefolderdialog",
    "showchoosefiledialog", "copytoclipboard", "opensyspreferences",
    "callapi", "getuifile", "setcallback"].forEach(function(name) {
@@ -74,7 +71,7 @@ constexpr char kDiagScript[] = R"JS((function() {
     try {
       if (n > 80) return;
       n++;
-      new Image().src = "http://127.0.0.1:39777/diag?m=" +
+      new Image().src = "http://127.0.0.1:39778/diag?m=" +
         encodeURIComponent(String(msg).slice(0, 260));
     } catch (e) {}
   }
@@ -115,17 +112,46 @@ constexpr char kDiagScript[] = R"JS((function() {
   diag("BOOT " + state());
   setTimeout(function() {
     var t0 = Date.now();
-    fetch("syncpilot-bridge://__probe", {method: "POST", body: "{}"})
-      .then(function(r) {
-        return r.text().then(function(t) {
-          diag("PROBE-OK " + (Date.now() - t0) + "ms body=" +
-               JSON.stringify(String(t).slice(0, 60)));
-        });
-      })
-      .catch(function(e) {
+    try {
+      window.btsync.call("__probe", {}).then(function(v) {
+        diag("PROBE-OK " + (Date.now() - t0) + "ms " + JSON.stringify(v));
+      }).catch(function(e) {
         diag("PROBE-FAIL " + (Date.now() - t0) + "ms " + e);
       });
+    } catch (e) { diag("PROBE-THROW " + e); }
   }, 2000);
+  window.addEventListener("DOMContentLoaded", function() {
+    try {
+      diag("DCL btasync=" + typeof window.btasync +
+           " callapi=" + (window.btasync ? typeof window.btasync.callapi : "-") +
+           " utilsURL=" + (window.app && window.app.utils ?
+               typeof window.app.utils.URLDeserialize : "no-app"));
+    } catch (e) { diag("DCL-ERR " + e); }
+  });
+  window.addEventListener("load", function() {
+    try {
+      if (!window.jQuery || !window.app) { diag("LOADCHECK no jquery/app"); return; }
+      diag("LOADCHECK btasync=" + typeof window.btasync +
+           " callapi=" + (window.btasync ? typeof window.btasync.callapi : "-"));
+      var orig = window.jQuery.ajax;
+      window.jQuery.ajax = function(u, o) {
+        var url = "?";
+        try { url = typeof u === "string" ? u : (u && u.url) || "?"; } catch (e) {}
+        diag("AJAX " + String(url).slice(0, 130));
+        try {
+          var r = orig.apply(this, arguments);
+          try {
+            if (r && r.fail) r.fail(function() { diag("AJAX-FAIL " + String(url).slice(0, 80)); });
+            if (r && r.catch) r.catch(function(e) { diag("AJAX-REJECT " + String(url).slice(0, 80) + " " + e); });
+          } catch (e) {}
+          return r;
+        } catch (e) {
+          diag("AJAX-THROW " + String(url).slice(0, 80) + " " + e);
+          throw e;
+        }
+      };
+    } catch (e) { diag("LOADCHECK-ERR " + e); }
+  });
 })();)JS";
 
 void on_window_object_cleared(WebKitScriptWorld* world, WebKitWebPage* page,
