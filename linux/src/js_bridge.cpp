@@ -1,13 +1,14 @@
 // UI-process side of the desktop JS bridge — see js_bridge.h for the
 // contract, and webext/syncpilot_extension.cpp for the page-side half.
 //
-// Every UI call arrives as a fetch to "syncpilot-bridge://<method>" whose
-// body is the JSON-encoded args object; the scheme handler here does the
-// native work and finishes the request — fetch's promise is the reply
-// channel. Response bodies are JSON-encoded result text ("" → null); a
-// body starting with "!" reports a native error and rejects the promise.
-// Requests may legitimately stay pending for a long time (a modal folder
-// chooser) and are answered when the native side resolves.
+// Every UI call arrives as window.webkit.messageHandlers.btsync.postMessage
+// with a JSON body {id, method, args}; the message handler here does the
+// native work and answers by evaluating __btsyncResolve(id, is_error,
+// json_payload) back in the page — the call's promise is the reply channel.
+// An is_error reply rejects with the payload as the message; an empty
+// payload resolves null; anything else is JSON-encoded result text.
+// Replies may legitimately stay pending for a long time (a modal folder
+// chooser) and are delivered when the native side resolves.
 //
 // Signatures are WebKitGTK 6.0 (GTK4).
 #ifdef HAVE_WEBKIT
@@ -27,9 +28,9 @@ namespace {
 
 WebKitWebView* g_view{nullptr};
 GtkWindow* g_parent{nullptr};
-GtkFileChooserNative* g_dialog{nullptr};      // one chooser at a time
-WebKitURISchemeRequest* g_dialog_request{nullptr};  // ref'd until answered
-std::string g_callback_name;                  // setcallback target (core events)
+GtkFileChooserNative* g_dialog{nullptr};  // one chooser at a time
+unsigned long g_dialog_id{0};             // the call awaiting the chooser
+std::string g_callback_name;              // setcallback target (core events)
 SoupSession* g_soup{nullptr};                 // callapi transport, lazy
 std::string g_proxy_origin;                   // scheme://host:port the UI is served from
 
@@ -37,39 +38,31 @@ std::string g_proxy_origin;                   // scheme://host:port the UI is se
 // its isWebKitWebView flag (and therefore the btsync.call routing) on it.
 constexpr char kUaMarker[] = " SyncWebKitWebView";
 
-constexpr char kScheme[] = "syncpilot-bridge";
-constexpr gsize kMaximumBodyBytes = 1 << 20;
-
 // ------------------------------------------------------------ body helpers
 
-std::string read_body(WebKitURISchemeRequest* request) {
-  GInputStream* body = webkit_uri_scheme_request_get_http_body(request);
-  if (body == nullptr) return {};
-  std::string out;
-  char buffer[16384];
-  while (out.size() < kMaximumBodyBytes) {
-    gssize count = g_input_stream_read(body, buffer, sizeof buffer, nullptr, nullptr);
-    if (count <= 0) break;
-    out.append(buffer, static_cast<size_t>(count));
-  }
-  return out;
+// JSON text for a string result, with quotes and escapes (defined below).
+std::string json_string(std::string const& s);
+
+// Answer the call `id` by evaluating __btsyncResolve in the page world.
+// An is_error reply rejects the call's promise with the payload message;
+// otherwise the payload is JSON-encoded result text ("" → null).
+void respond(unsigned long id, bool is_error, std::string const& payload) {
+  if (g_view == nullptr) return;
+  std::string script = "__btsyncResolve(" + std::to_string(id) + ", " +
+                       (is_error ? "true" : "false") + ", " +
+                       json_string(payload) + ")";
+  webkit_web_view_evaluate_javascript(g_view, script.c_str(),
+                                      static_cast<gssize>(script.size()),
+                                      nullptr, nullptr, nullptr, nullptr,
+                                      nullptr);
 }
 
-void finish_text(WebKitURISchemeRequest* request, std::string const& text) {
-  GBytes* bytes = g_bytes_new(text.data(), text.size());
-  GInputStream* stream = g_memory_input_stream_new_from_bytes(bytes);
-  webkit_uri_scheme_request_finish(request, stream, static_cast<gint64>(text.size()),
-                                   "text/plain");
-  g_object_unref(stream);
-  g_bytes_unref(bytes);
+void respond_result(unsigned long id, std::string const& json_value) {
+  respond(id, false, json_value);
 }
 
-void finish_result(WebKitURISchemeRequest* request, std::string const& json_value) {
-  finish_text(request, json_value);
-}
-
-void finish_error(WebKitURISchemeRequest* request, std::string const& message) {
-  finish_text(request, "!" + message);
+void respond_error(unsigned long id, std::string const& message) {
+  respond(id, true, message);
 }
 
 // JSON text for a string result, with quotes and escapes.
@@ -99,22 +92,6 @@ std::string json_string(std::string const& s) {
 }
 
 // --------------------------------------------------------- args extraction
-
-JsonObject* args_object(std::string const& body) {
-  if (body.empty()) return nullptr;
-  JsonParser* parser = json_parser_new();
-  if (!json_parser_load_from_data(parser, body.data(),
-                                  static_cast<gssize>(body.size()), nullptr)) {
-    g_object_unref(parser);
-    return nullptr;
-  }
-  // The parser object keeps the node tree alive; leak it deliberately —
-  // one small tree per bridge call, cheaper than wiring ownership through
-  // every handler.
-  JsonNode* root = json_parser_get_root(parser);
-  if (root == nullptr || !JSON_NODE_HOLDS_OBJECT(root)) return nullptr;
-  return json_node_get_object(root);
-}
 
 bool args_string(JsonObject* args, char const* name, std::string* out) {
   if (args == nullptr || !json_object_has_member(args, name)) return false;
@@ -152,8 +129,8 @@ bool open_path_in_file_manager(std::string const& path) {
 }
 
 void on_choose_response(GtkNativeDialog* native, int response, gpointer) {
-  WebKitURISchemeRequest* request = g_dialog_request;
-  g_dialog_request = nullptr;
+  unsigned long id = g_dialog_id;
+  g_dialog_id = 0;
   g_dialog = nullptr;
   std::string json = "false";  // cancel: the UI resolves its defer with ""
   if (response == GTK_RESPONSE_ACCEPT) {
@@ -167,10 +144,7 @@ void on_choose_response(GtkNativeDialog* native, int response, gpointer) {
   }
   gtk_native_dialog_destroy(native);
   g_object_unref(native);
-  if (request != nullptr) {
-    finish_result(request, json);
-    g_object_unref(request);  // our keep-alive reference
-  }
+  if (id != 0) respond_result(id, json);
 }
 
 // --------------------------------------------------- callapi forwarding
@@ -191,7 +165,7 @@ void on_choose_response(GtkNativeDialog* native, int response, gpointer) {
 // apiRequestQueue/callback channel for async:true calls is unused here and
 // unimplemented.
 struct CallapiJob {
-  WebKitURISchemeRequest* request;  // our keep-alive reference
+  unsigned long id;  // the call awaiting the daemon's answer
   SoupMessage* message;
 };
 
@@ -226,22 +200,21 @@ void on_callapi_sent(GObject* session, GAsyncResult* result, gpointer user_data)
     if (status < 200 || status >= 300) {
       body = "{\"error\":\"HTTP " + std::to_string(status) + " from the daemon\"}";
     }
-    finish_result(job->request, json_string(body));
+    respond_result(job->id, json_string(body));
   } else {
     std::string const detail =
         error != nullptr ? error->message : "no response from the daemon";
-    finish_result(job->request, "{\"error\":" + json_string(detail) + "}");
+    respond_result(job->id, "{\"error\":" + json_string(detail) + "}");
   }
   if (error != nullptr) g_error_free(error);
   if (stream != nullptr) g_object_unref(stream);
   g_object_unref(job->message);
-  g_object_unref(job->request);  // our keep-alive reference
   delete job;
 }
 
 // Returns false when the forwarding plumbing is not up; the caller answers
 // with the legacy benign stub so the UI keeps its web-fallback behavior.
-bool dispatch_callapi(WebKitURISchemeRequest* request, JsonObject* args) {
+bool dispatch_callapi(unsigned long id, JsonObject* args) {
   if (g_proxy_origin.empty() || g_view == nullptr) return false;
   if (g_soup == nullptr) g_soup = soup_session_new();
 
@@ -263,20 +236,19 @@ bool dispatch_callapi(WebKitURISchemeRequest* request, JsonObject* args) {
     g_bytes_unref(payload);
   }
 
-  auto* job = new CallapiJob{request, message};
-  g_object_ref(request);  // answered later in on_callapi_sent
+  auto* job = new CallapiJob{id, message};
   soup_session_send_async(g_soup, message, G_PRIORITY_DEFAULT, nullptr,
                           on_callapi_sent, job);
   return true;
 }
 
-void dispatch(WebKitURISchemeRequest* request, std::string const& method,
-              JsonObject* args, std::string const& body) {
+void dispatch_call(unsigned long id, std::string const& method,
+                   JsonObject* args, std::string const& body) {
   if (method == "openpath") {
     std::string path;
     bool const ok = args_string(args, "path", &path) &&
                     open_path_in_file_manager(path);
-    finish_result(request, ok ? "true" : "false");
+    respond_result(id, ok ? "true" : "false");
     return;
   }
   if (method == "openurl") {
@@ -291,13 +263,13 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
       }
       g_free(scheme);
     }
-    finish_result(request, ok ? "true" : "false");
+    respond_result(id, ok ? "true" : "false");
     return;
   }
   if (method == "showchoosefolderdialog" || method == "showchoosefiledialog") {
     if (g_dialog != nullptr) {
       // One chooser at a time; report cancelled rather than queueing.
-      finish_result(request, "false");
+      respond_result(id, "false");
       return;
     }
     bool const folder = method == "showchoosefolderdialog";
@@ -307,9 +279,8 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
         nullptr, nullptr);
     gtk_native_dialog_set_modal(GTK_NATIVE_DIALOG(chooser), TRUE);
     g_dialog = chooser;
-    // Keep the request alive for as long as the dialog takes; answered in
-    // on_choose_response.
-    g_dialog_request = WEBKIT_URI_SCHEME_REQUEST(g_object_ref(request));
+    // Answered whenever the dialog closes; see on_choose_response.
+    g_dialog_id = id;
     g_signal_connect(chooser, "response", G_CALLBACK(on_choose_response), nullptr);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(chooser));
     return;
@@ -334,7 +305,7 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
                                       notification);
     }
     g_object_unref(notification);
-    finish_result(request, app != nullptr ? "true" : "false");
+    respond_result(id, app != nullptr ? "true" : "false");
     return;
   }
   if (method == "copytoclipboard") {
@@ -345,7 +316,7 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
           gdk_display_get_clipboard(gdk_display_get_default());
       gdk_clipboard_set_text(clipboard, text.c_str());
     }
-    finish_result(request, ok ? "true" : "false");
+    respond_result(id, ok ? "true" : "false");
     return;
   }
   if (method == "opensyspreferences") {
@@ -353,7 +324,7 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
     // no portable Linux equivalent, so report unsupported. The UI treats a
     // falsy result the same way it treats a closed preferences pane.
     log_call(method, body);
-    finish_result(request, "false");
+    respond_result(id, "false");
     return;
   }
   if (method == "getuifile") {
@@ -372,13 +343,13 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
       if (std::filesystem::is_regular_file(full)) {
         gchar* contents = nullptr;
         if (g_file_get_contents(full.c_str(), &contents, nullptr, nullptr)) {
-          finish_result(request, json_string(contents));
+          respond_result(id, json_string(contents));
           served = true;
           g_free(contents);
         }
       }
     }
-    if (!served) finish_error(request, "file not found");
+    if (!served) respond_error(id, "file not found");
     return;
   }
   if (method == "setcallback") {
@@ -386,12 +357,12 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
     // we do not push core events into the JS callback yet.
     std::string name;
     if (args_string(args, "functionname", &name)) g_callback_name = name;
-    finish_result(request, "true");
+    respond_result(id, "true");
     return;
   }
   if (method == "get") {
     // Only "parameter" is queried (launch parameters; we have none).
-    finish_result(request, "null");
+    respond_result(id, "null");
     return;
   }
   if (method == "set") {
@@ -406,41 +377,90 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
         webkit_web_inspector_close(webkit_web_view_get_inspector(g_view));
       }
     }
-    finish_result(request, "true");
+    respond_result(id, "true");
     return;
   }
   if (method == "callapi") {
     // Desktop-mode API surface — the UI's only data path (see the forwarding
     // notes above dispatch).
     log_call(method, body);
-    if (!dispatch_callapi(request, args)) {
-      finish_result(request, "null");
+    if (!dispatch_callapi(id, args)) {
+      respond_result(id, "null");
     }
     return;
   }
   if (method == "__ready") {
     std::fprintf(stderr, "js-bridge: installed, page script alive\n");
-    finish_text(request, "");
+    respond_result(id, "");
     return;
   }
   log_call(method, body);
-  finish_result(request, "null");
+  respond_result(id, "null");
 }
 
-void on_scheme_request(WebKitURISchemeRequest* request, gpointer) {
-  char const* uri = webkit_uri_scheme_request_get_uri(request);
-  char* host = nullptr;
-  // The method rides in the URI host: syncpilot-bridge://openpath
-  g_uri_split_network(uri, G_URI_FLAGS_NONE, nullptr, &host, nullptr, nullptr);
-  std::string const method = host != nullptr ? host : "";
-  g_free(host);
+// Entry point for window.webkit.messageHandlers.btsync.postMessage: the
+// page passes a JSON string {id, method, args}.
+void on_bridge_message(WebKitUserContentManager* manager, JSCValue* value,
+                       gpointer) {
+  (void)manager;
+  if (value == nullptr || !jsc_value_is_string(value)) return;
+  char* body_cstr = jsc_value_to_string(value);
+  std::string const body = body_cstr != nullptr ? body_cstr : "";
+  g_free(body_cstr);
 
-  std::string const body = read_body(request);
-  if (g_view == nullptr || g_parent == nullptr) {
-    finish_error(request, "bridge not ready");
+  // The parser object keeps the node tree alive for the handler's duration;
+  // one small tree per call, cheaper than wiring ownership through
+  // dispatch_call.
+  JsonParser* parser = json_parser_new();
+  if (!json_parser_load_from_data(parser, body.data(),
+                                  static_cast<gssize>(body.size()), nullptr)) {
+    g_object_unref(parser);
     return;
   }
-  dispatch(request, method, args_object(body), body);
+  JsonNode* root = json_parser_get_root(parser);
+  if (root == nullptr || !JSON_NODE_HOLDS_OBJECT(root)) {
+    g_object_unref(parser);
+    return;
+  }
+  JsonObject* message = json_node_get_object(root);
+
+  unsigned long id = 0;
+  if (json_object_has_member(message, "id")) {
+    JsonNode* id_node = json_object_get_member(message, "id");
+    if (id_node != nullptr && JSON_NODE_HOLDS_VALUE(id_node)) {
+      GValue id_value = G_VALUE_INIT;
+      json_node_get_value(id_node, &id_value);
+      if (G_VALUE_HOLDS_INT64(&id_value)) {
+        id = static_cast<unsigned long>(g_value_get_int64(&id_value));
+      } else if (G_VALUE_HOLDS_DOUBLE(&id_value)) {
+        id = static_cast<unsigned long>(g_value_get_double(&id_value));
+      }
+      g_value_unset(&id_value);
+    }
+  }
+  std::string method;
+  if (json_object_has_member(message, "method")) {
+    JsonNode* method_node = json_object_get_member(message, "method");
+    if (method_node != nullptr && JSON_NODE_HOLDS_VALUE(method_node)) {
+      GValue method_value = G_VALUE_INIT;
+      json_node_get_value(method_node, &method_value);
+      if (G_VALUE_HOLDS_STRING(&method_value)) {
+        method = g_value_get_string(&method_value);
+      }
+      g_value_unset(&method_value);
+    }
+  }
+  JsonObject* args = json_object_has_member(message, "args") &&
+                             JSON_NODE_HOLDS_OBJECT(
+                                 json_object_get_member(message, "args"))
+                         ? json_object_get_object_member(message, "args")
+                         : nullptr;
+
+  if (g_view == nullptr || g_parent == nullptr) {
+    respond_error(id, "bridge not ready");
+    return;
+  }
+  dispatch_call(id, method, args, body);
 }
 
 }  // namespace
@@ -464,12 +484,17 @@ void install_js_bridge(WebKitWebView* web_view, GtkWindow* parent) {
       std::filesystem::read_symlink("/proc/self/exe").parent_path() / "app" / "webext";
   webkit_web_context_set_web_process_extensions_directory(
       context, extensions_dir.c_str());
-  static bool scheme_registered = false;
-  if (!scheme_registered) {
-    webkit_web_context_register_uri_scheme(context, kScheme, on_scheme_request,
-                                           nullptr, nullptr);
-    scheme_registered = true;
-  }
+
+  // The call channel: the page's postMessage lands here, answers go back by
+  // evaluating __btsyncResolve. Default world — that is where the extension
+  // defines the bridge object. Connect before registering so no early call
+  // races the signal.
+  WebKitUserContentManager* manager =
+      webkit_web_view_get_user_content_manager(web_view);
+  g_signal_connect(manager, "script-message-received::btsync",
+                   G_CALLBACK(on_bridge_message), nullptr);
+  webkit_user_content_manager_register_script_message_handler(manager, "btsync",
+                                                              nullptr);
 }
 
 }  // namespace sp
