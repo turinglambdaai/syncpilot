@@ -65,7 +65,7 @@ void respond_result(unsigned long id, std::string const& json_value) {
 // rejecting would crash the UI's request wrapper on its missing .error
 // check (observed as a fully blank interface).
 void respond_error(unsigned long id, std::string const& message) {
-  respond_result(id, "{"error":" + json_string(message) + "}");
+  respond_result(id, "{\"error\":" + json_string(message) + "}");
 }
 
 // JSON text for a string result, with quotes and escapes.
