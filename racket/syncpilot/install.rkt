@@ -23,7 +23,8 @@
          default-install-dir
          install-official-binary!
          verify-sha256
-         extract-rslsync)
+         extract-rslsync
+         response-code)
 
 (define stable-url-x64
   "https://download-cdn.resilio.com/stable/linux/x64/0/resilio-sync_x64.tar.gz")
@@ -89,6 +90,15 @@
       (with-handlers ([exn:fail? void])
         (delete-directory/files tmp)))))
 
+;; Status code from the #:status? #t second value of get-pure-port/headers.
+;; That value is a string like "HTTP/1.1 200 OK\r\n..." — the bytes? branch
+;; only guards older net/url revisions. Unparseable lines yield #f so the
+;; fetcher reports a download failure instead of crashing on a contract.
+(define (response-code status)
+  (define line (if (bytes? status) (bytes->string/utf-8 status) status))
+  (define parts (string-split line " " #:trim? #t))
+  (and (>= (length parts) 2) (string->number (list-ref parts 1))))
+
 ;; Default fetcher: plain GET against the CDN (HTTPS via net/url; the tests
 ;; inject a fetcher instead of touching the network).
 (define (http-fetch url)
@@ -102,10 +112,7 @@
        void
        (lambda ()
          (define body (port->bytes in))
-         (define code
-           (let* ([line (bytes->string/utf-8 status)]
-                  [parts (string-split line " " #:trim? #t)])
-             (and (>= (length parts) 2) (string->number (list-ref parts 1)))))
+         (define code (response-code status))
          (unless (and code (<= 200 code 299))
            (error 'install "download failed: HTTP ~a from ~a" (or code "?") url))
          body)
