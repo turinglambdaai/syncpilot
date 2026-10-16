@@ -4,6 +4,10 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+### Fixed
+
+- **The embedded official UI renders again in desktop mode**: the desktop bridge's `callapi` method answered a hardcoded `null` ("no entries are reachable in this UI build") — true for the UI it was written against, false since the daemon's Web UI moved its whole data plane into the desktop bridge (with `window.btsync` present, the UI's jQuery.ajax override routes every `/gui/` and `/api/` request through `callapi` and never speaks HTTP to the proxy, so the stub left the interface with no data at all: a blank window). `callapi` now forwards `{action, params, type}` to the same origin the web view loads — the auth-injecting proxy — over a libsoup session and answers with the daemon's response; transport and HTTP failures surface as `{"error": …}` results rather than rejected promises (a rejection crashes the UI's request wrapper on a missing `.error` field). The request finishes when the daemon answers, so the ~30s core-events long poll passes through untouched.
+
 ## [0.8.3] - 2026-10-15
 
 The release-hygiene round: everything below tightens how SyncPilot ships

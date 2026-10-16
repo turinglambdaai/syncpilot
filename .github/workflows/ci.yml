@@ -157,3 +157,14 @@ jobs:
           export GTK_A11Y=none
           xvfb-run -a bash -c 'set -euo pipefail; raco rivet package && raco rivet verify'
           test -x dist/syncpilot-linux-x64/RivetHost
+
+      # Install-test artifact for PR branches: the same payload release.yml
+      # ships (system gtk4/webkit link, no bundling), so a real desktop can
+      # run it straight from the CI run before merge.
+      - name: Upload packaged host
+        uses: actions/upload-artifact@v4
+        with:
+          name: syncpilot-linux-x64-${{ github.run_id }}
+          path: dist/syncpilot-linux-x64/
+          retention-days: 14
+          if-no-files-found: error

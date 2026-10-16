@@ -15,6 +15,7 @@
 
 #include <jsc/jsc.h>
 #include <json-glib/json-glib.h>
+#include <libsoup/soup.h>
 
 #include <cstdio>
 #include <cstring>
@@ -29,6 +30,8 @@ GtkWindow* g_parent{nullptr};
 GtkFileChooserNative* g_dialog{nullptr};      // one chooser at a time
 WebKitURISchemeRequest* g_dialog_request{nullptr};  // ref'd until answered
 std::string g_callback_name;                  // setcallback target (core events)
+SoupSession* g_soup{nullptr};                 // callapi transport, lazy
+std::string g_proxy_origin;                   // scheme://host:port the UI is served from
 
 // The marker the official WebKit client puts in the user agent; app.js keys
 // its isWebKitWebView flag (and therefore the btsync.call routing) on it.
@@ -168,6 +171,103 @@ void on_choose_response(GtkNativeDialog* native, int response, gpointer) {
     finish_result(request, json);
     g_object_unref(request);  // our keep-alive reference
   }
+}
+
+// --------------------------------------------------- callapi forwarding
+
+// Desktop-mode API transport. The UI's jQuery.ajax override routes every
+// /gui/ and /api/ request through btsync.call("callapi", {type, action,
+// params, async}) — in desktop mode the daemon's HTTP API never sees webview
+// traffic (a stub answer here blanks the whole interface). We forward to the
+// daemon via the proxy (which injects the WebUI credentials) and answer with
+// the response body wrapped as a JSON string: the page JSON.parse()s the
+// result once more before looking at it. Failures answer as
+// {"error": "..."} instead of rejecting — a rejected promise makes the UI's
+// request wrapper dereference a missing result and drop the request.
+//
+// Every request this UI build makes passes a falsy async flag and expects
+// the full response from the call — the core-events long poll (action=
+// events, ~30s) included, which is why the session sets no timeout. The
+// apiRequestQueue/callback channel for async:true calls is unused here and
+// unimplemented.
+struct CallapiJob {
+  WebKitURISchemeRequest* request;  // our keep-alive reference
+  SoupMessage* message;
+};
+
+void on_callapi_sent(GObject* session, GAsyncResult* result, gpointer user_data) {
+  auto* job = static_cast<CallapiJob*>(user_data);
+  GError* error = nullptr;
+  GInputStream* stream =
+      soup_session_send_finish(SOUP_SESSION(session), result, &error);
+  std::string body;
+  bool sent = false;
+  if (stream != nullptr) {
+    GOutputStream* out = g_memory_output_stream_new_resizable();
+    GError* splice = nullptr;
+    g_output_stream_splice(
+        out, stream,
+        static_cast<GOutputStreamSpliceFlags>(G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
+                                              G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET),
+        nullptr, &splice);
+    if (splice == nullptr) {
+      body.assign(
+          static_cast<gchar*>(g_memory_output_stream_get_data(
+              G_MEMORY_OUTPUT_STREAM(out))),
+          g_memory_output_stream_get_data_size(G_MEMORY_OUTPUT_STREAM(out)));
+      sent = true;
+    } else {
+      g_error_free(splice);
+    }
+    g_object_unref(out);
+  }
+  if (sent) {
+    guint const status = soup_message_get_status(job->message);
+    if (status < 200 || status >= 300) {
+      body = "{\"error\":\"HTTP " + std::to_string(status) + " from the daemon\"}";
+    }
+    finish_result(job->request, json_string(body));
+  } else {
+    std::string const detail =
+        error != nullptr ? error->message : "no response from the daemon";
+    finish_result(job->request, "{\"error\":" + json_string(detail) + "}");
+  }
+  if (error != nullptr) g_error_free(error);
+  if (stream != nullptr) g_object_unref(stream);
+  g_object_unref(job->message);
+  g_object_unref(job->request);  // our keep-alive reference
+  delete job;
+}
+
+// Returns false when the forwarding plumbing is not up; the caller answers
+// with the legacy benign stub so the UI keeps its web-fallback behavior.
+bool dispatch_callapi(WebKitURISchemeRequest* request, JsonObject* args) {
+  if (g_proxy_origin.empty() || g_view == nullptr) return false;
+  if (g_soup == nullptr) g_soup = soup_session_new();
+
+  std::string type = "GET";
+  std::string action;
+  std::string params;
+  args_string(args, "type", &type);
+  args_string(args, "action", &action);
+  args_string(args, "params", &params);
+
+  std::string url = g_proxy_origin + "/gui/?action=" + action;
+  if (type != "POST" && !params.empty()) url += "&" + params;
+  SoupMessage* message =
+      soup_message_new(type == "POST" ? "POST" : "GET", url.c_str());
+  if (message == nullptr) return false;
+  if (type == "POST" && !params.empty()) {
+    GBytes* payload = g_bytes_new(params.data(), params.size());
+    soup_message_set_request_body_from_bytes(message, "application/json", payload);
+    g_bytes_unref(payload);
+  }
+
+  auto* job = new CallapiJob{request, message};
+  g_object_ref(request);  // answered later in on_callapi_sent
+  soup_session_send_async(g_soup, message, G_PRIORITY_DEFAULT, nullptr,
+                          on_callapi_sent, job);
+  return true;
 }
 
 void dispatch(WebKitURISchemeRequest* request, std::string const& method,
@@ -310,10 +410,12 @@ void dispatch(WebKitURISchemeRequest* request, std::string const& method,
     return;
   }
   if (method == "callapi") {
-    // Generic desktop-client API surface; no entries are reachable in this
-    // UI build, so answer with a benign null.
+    // Desktop-mode API surface — the UI's only data path (see the forwarding
+    // notes above dispatch).
     log_call(method, body);
-    finish_result(request, "null");
+    if (!dispatch_callapi(request, args)) {
+      finish_result(request, "null");
+    }
     return;
   }
   if (method == "__ready") {
@@ -342,6 +444,8 @@ void on_scheme_request(WebKitURISchemeRequest* request, gpointer) {
 }
 
 }  // namespace
+
+void set_bridge_proxy_origin(std::string const& origin) { g_proxy_origin = origin; }
 
 void install_js_bridge(WebKitWebView* web_view, GtkWindow* parent) {
   g_view = web_view;
