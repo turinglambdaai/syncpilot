@@ -542,6 +542,12 @@ void start_handoff() {
 void enter_web_view(std::string const& url) {
   g_state.proxy_url = url;
   g_state.state = UiState::Web;
+  // The callapi bridge forwards desktop-mode API traffic to the same origin
+  // the web view loads (proxy injects the WebUI credentials).
+  std::string origin = url;
+  std::size_t const gui = origin.find("/gui/");
+  if (gui != std::string::npos) origin.resize(gui);
+  sp::set_bridge_proxy_origin(origin);
   if (g_state.web_view == nullptr) {
     // The web view is created at handoff, not at activation: the bridge
     // user scripts must land while the web process still counts as fresh,
