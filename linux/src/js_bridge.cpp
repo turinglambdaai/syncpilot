@@ -46,14 +46,14 @@ std::string json_string(std::string const& s);
 
 // Answer the call `index` by invoking the resolver the UI parked in
 // window.btsync.cache[index] (sendTheMessage's fallback when postMessage
-// returns no promise). The resolver receives the result as a JSON text
-// string — the caller JSON.parse()s it once more; errors therefore travel
-// as a resolved {"error": …} value, which is the shape the request
-// wrapper's `.error` check expects.
+// returns no promise). `json_value` is a JSON literal: the resolver
+// receives the decoded value (true, an object, a string — whatever the
+// caller passed). The callapi path passes json_string(body) so the UI
+// gets the body text it JSON.parse()s once more.
 void respond_result(unsigned long id, std::string const& json_value) {
   if (g_view == nullptr) return;
   std::string script = "(window.btsync.cache[" + std::to_string(id) +
-                       "]||function(){})( " + json_string(json_value) +
+                       "]||function(){})( " + json_value +
                        ");delete window.btsync.cache[" + std::to_string(id) +
                        "];";
   webkit_web_view_evaluate_javascript(g_view, script.c_str(),
@@ -62,11 +62,13 @@ void respond_result(unsigned long id, std::string const& json_value) {
                                       nullptr);
 }
 
-// Transport/native failures surface as a resolved {"error": …} value —
-// rejecting would crash the UI's request wrapper on its missing .error
-// check (observed as a fully blank interface).
+// Transport/native failures surface as a resolved JSON text carrying the
+// error — the caller JSON.parse()s it into {\"error\": …}, the shape the
+// request wrapper's `.error` check expects. Rejecting instead would crash
+// that wrapper on its missing result (observed as a fully blank
+// interface).
 void respond_error(unsigned long id, std::string const& message) {
-  respond_result(id, "{\"error\":" + json_string(message) + "}");
+  respond_result(id, json_string("{\"error\":" + json_string(message) + "}"));
 }
 
 // JSON text for a string result, with quotes and escapes.
