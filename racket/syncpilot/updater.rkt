@@ -171,7 +171,8 @@
                       (embedded-public-key)
                       update-key-id
                       (rollout-bucket settings commit!)
-                      maximum-download-bytes))
+                      maximum-download-bytes
+                      #f))
     (define candidate (select-update config manifest))
     (commit! (settings-with settings
                             #:last-update-check-at (current-seconds)))
@@ -257,7 +258,8 @@
                     (embedded-public-key)
                     update-key-id
                     (rollout-bucket settings commit!)
-                    maximum-download-bytes))
+                    maximum-download-bytes
+                    #f))
   (define destination (destination-path data-dir candidate))
   (set-box! last-progress-seconds (current-seconds))
   (define worker-thread
