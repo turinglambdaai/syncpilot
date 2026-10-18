@@ -53,6 +53,18 @@ def find_named(root, name, expected_role=None):
     return None
 
 
+def find_editable_named(root, name):
+    for node in walk(root):
+        if (node.name or "") != name:
+            continue
+        try:
+            node.queryEditableText()
+            return node
+        except Exception:
+            continue
+    return None
+
+
 def find_frame(name):
     desktop = pyatspi.Registry.getDesktop(0)
     for application in children(desktop):
@@ -108,7 +120,7 @@ def main():
     )
     device = wait_for(
         "accessible device-name field",
-        lambda: find_named(settings_window, "Device name shown to peers"),
+        lambda: find_editable_named(settings_window, "Device name shown to peers"),
     )
     device.queryEditableText().setTextContents("Acceptance device")
     save = wait_for(
