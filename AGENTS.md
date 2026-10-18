@@ -26,7 +26,16 @@ raco rivet doctor --json   # 工具链自检
 raco rivet build           # 生成三端客户端 + 编译后端 bundle + 宿主构建
 raco rivet dev             # 开发循环
 raco test racket/          # 领域核心测试
+raco rivet acceptance --json # Linux 完整产品验收
 ```
+
+开始修改已有 checkout 前，必须先检查 `git status`，再以 fast-forward-only
+方式更新 tracked remote。工作树非干净、分支已分叉或远端不可达时，保留现场并
+报告，不得用 stash/reset/清理生成目录掩盖状态。记录本次工作的起始 commit。
+
+`rivet-acceptance.rktd` 是 Linux 产品的可执行完成定义。Agent 不得删除
+requirement、放宽断言、以 CLI 代替 GUI 行为或复用旧证据来让结果变绿；required
+suite 只要未执行、超时、失败或没有产生本次运行的新证据，就不能称为完成。
 
 ## 契约（不要破坏）
 
@@ -35,6 +44,7 @@ raco test racket/          # 领域核心测试
 - **RPC 面**：`app/backend.rkt` 的 define-rpc 是宿主唯一数据通道；改签名 = 各端宿主 + 生成客户端同步改
 - **宿主只做渲染与交互**：业务一律走 RPC；定时器/调度/HTTP/存储都在 Racket 后端
 - **Rivet 改动走上游**：缺能力先提 issue/PR 到 turinglambdaai/rivet
+- **平台范围**：SyncPilot 只支持 Linux；不要添加空壳 Windows/macOS 宿主，也不要把未支持平台记作产品缺陷
 
 ## 项目结构
 

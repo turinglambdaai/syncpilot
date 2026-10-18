@@ -244,6 +244,9 @@ GtkWidget* build_daemon_card() {
   card_append(card, GTK_WIDGET(g_ui.binary_label));
 
   g_ui.binary_entry = GTK_ENTRY(gtk_entry_new());
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(g_ui.binary_entry), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      l10n::t("settings.binaryLabel", {"path"}).c_str(), -1);
   gtk_entry_set_placeholder_text(
       g_ui.binary_entry, l10n::t("settings.binaryPlaceholder").c_str());
   card_append(card, GTK_WIDGET(g_ui.binary_entry));
@@ -272,11 +275,17 @@ GtkWidget* build_device_card() {
 
   card_append(card, field_label(l10n::t("settings.deviceNameLabel")));
   g_ui.device_entry = GTK_ENTRY(gtk_entry_new());
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(g_ui.device_entry), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      l10n::t("settings.deviceNameLabel").c_str(), -1);
   card_append(card, GTK_WIDGET(g_ui.device_entry));
 
   card_append(card, field_label(l10n::t("settings.portLabel")));
   g_ui.port_spin = GTK_SPIN_BUTTON(
       gtk_spin_button_new_with_range(1024.0, 65535.0, 1.0));
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(g_ui.port_spin), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      l10n::t("settings.portLabel").c_str(), -1);
   card_append(card, GTK_WIDGET(g_ui.port_spin));
   return card;
 }
@@ -311,6 +320,9 @@ GtkWidget* build_desktop_card() {
                                  kLanguageLabels[2], nullptr};
   g_ui.language_drop =
       GTK_DROP_DOWN(gtk_drop_down_new_from_strings(entries));
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(g_ui.language_drop), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      l10n::t("settings.language").c_str(), -1);
   gtk_widget_set_halign(GTK_WIDGET(g_ui.language_drop), GTK_ALIGN_START);
   card_append(card, GTK_WIDGET(g_ui.language_drop));
   return card;
