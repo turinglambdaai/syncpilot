@@ -11,7 +11,10 @@
          crypto/all
          rackunit
          net/base64
-         rivet/distribution
+         (except-in rivet/distribution
+                    platform-symbol
+                    architecture-symbol
+                    installer-extension)
          racket/file
          racket/list
          racket/path
@@ -77,7 +80,7 @@
     (update-artifact 'linux 'x64
                      "https://example.com/syncpilot/SyncPilot-9.9.9.tar.gz"
                      "0000000000000000000000000000000000000000000000000000000000000000"
-                     123456789 'targz '()))
+                     123456789 'targz '() #f))
   (define manifest
     (update-manifest app-identifier "9.9.9" 99 'stable
                      "2026-10-09T09:00:00Z" "0.0.0" "0.5.1" #t 100
@@ -111,7 +114,7 @@
   (define config
     (updater-config app-identifier "0.6.0" 'stable 'linux 'x64
                     (datum->pk-key pub-der 'SubjectPublicKeyInfo)
-                    "test-key" 42 800000000))
+                    "test-key" 42 800000000 #f))
   (check-true (update-candidate? (select-update config verified)))
   ;; same version: nothing to do
   (check-false (select-update config
@@ -178,7 +181,7 @@
     (update-candidate #f
                       (update-artifact 'linux 'x64
                                        "https://example.com/x.tar.gz"
-                                       sha size 'targz '())))
+                                       sha size 'targz '() #f)))
   (define good
     (candidate-for (sha256-file/hex file-path) (bytes-length payload)))
   (check-equal? (verify-update-artifact! good file-path) file-path)
@@ -270,14 +273,14 @@
                                        (format "http://127.0.0.1:~a/redirect" port)
                                        (sha256-file/hex payload-path)
                                        (bytes-length payload)
-                                       'targz '())))
+                                       'targz '() #f)))
   (define config
     (updater-config app-identifier "0.6.0" 'stable 'linux 'x64
                     (datum->pk-key
                      (base64-string->bytes update-public-key-b64)
                      'SubjectPublicKeyInfo)
                     "test-key" 0
-                    (* 4 (bytes-length payload))))
+                    (* 4 (bytes-length payload)) #f))
   (define destination (build-path tmp "updates" "SyncPilot-0.7.0.tar.gz"))
   (check-equal? (download-with-progress! config candidate destination)
                 destination)
