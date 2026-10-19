@@ -10,7 +10,7 @@ on:
 env:
   # Single source of truth for the rivet pin (same value as release.yml);
   # every install step below references this so a bump is one edit.
-  RIVET_PIN: b1d05950537f8679b2cfb48aded383c5162c288f
+  RIVET_PIN: v0.12.0
 jobs:
   release-metadata:
     name: Release metadata (VERSION alignment)
@@ -54,7 +54,7 @@ jobs:
       # GitHub does not allow expressions in `uses:`, so this action pin
       # stays literal — keep it in sync with RIVET_PIN above.
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@b1d05950537f8679b2cfb48aded383c5162c288f
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@v0.12.0
 
       - name: Install system dependencies
         run: |
