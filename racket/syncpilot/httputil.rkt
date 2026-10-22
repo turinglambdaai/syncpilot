@@ -362,7 +362,13 @@
 
 (define sha256-native
   (with-handlers ([exn:fail? (lambda (_) #f)])
-    (define lib (ffi-lib "libcrypto"))
+    ;; macOS: versioned names only. Current macOS releases make dyld abort
+    ;; the whole process on the unversioned /usr/lib/libcrypto.dylib stub —
+    ;; the exn handler never sees it. Linux keeps the unversioned fallback
+    ;; for layouts without a libcrypto.so.N.
+    (define lib (if (eq? (system-type 'os) 'macosx)
+                    (ffi-lib "libcrypto" '("3" "1.1"))
+                    (ffi-lib "libcrypto")))
     (get-ffi-obj "SHA256" lib (_fun _bytes _long _bytes -> _void) (lambda () #f))))
 
 (define (m32 x) (bitwise-and x #xFFFFFFFF))

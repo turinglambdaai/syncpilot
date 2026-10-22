@@ -4,6 +4,16 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+### Fixed
+
+- **The SHA-256 helper no longer loads an unversioned libcrypto on macOS.**
+  `httputil.rkt`'s native SHA-256 shortcut opened bare `libcrypto`; current
+  macOS releases make dyld abort the whole process on the unversioned
+  `/usr/lib/libcrypto.dylib` stub, which killed every process that merely
+  required the module (the test suite included) — the exception handler
+  never sees a dyld-level abort. macOS now resolves versioned names only
+  (Racket's bundled `libcrypto.3`); Linux keeps the unversioned fallback.
+
 ## [0.8.3] - 2026-10-15
 
 The release-hygiene round: everything below tightens how SyncPilot ships
