@@ -97,6 +97,19 @@
 (test-case "non-gzip garbage is rejected"
   (check-exn exn:fail? (lambda () (extract-rslsync #"not a gzip"))))
 
+;; ----------------------------------------------------------- status parsing
+
+;; get-pure-port/headers #:status? #t hands back the status line + headers as
+;; a string; the parser must read the code out of that shape (and tolerate
+;; bytes, in case a net/url revision changes the contract).
+(test-case "response-code reads the status out of a net/url status value"
+  (check-equal? (response-code "HTTP/1.1 200 OK\r\nContent-Type: binary/octet-stream\r\n\r\n") 200)
+  (check-equal? (response-code "HTTP/1.1 206 Partial Content\r\n\r\n") 206)
+  (check-equal? (response-code "HTTP/1.1 302 Found\r\n\r\n") 302)
+  (check-equal? (response-code (string->bytes/utf-8 "HTTP/1.1 403 Forbidden\r\n\r\n")) 403)
+  (check-false (response-code "garbage with no status line"))
+  (check-false (response-code "HTTP/1.1 not-a-code OK\r\n\r\n")))
+
 ;; ------------------------------------------------------------------ install
 
 (define pinned-payload #"HELLO")
