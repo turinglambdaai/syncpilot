@@ -21,12 +21,19 @@
 #include <gtk/gtk.h>
 #include <webkit/webkit.h>
 
+#include <string>
+
 namespace sp {
 
 // Call once, after the web view is created and before it loads anything:
 // sets the user-agent marker, enables developer extras, and registers the
 // bridge script and message handler.
 void install_js_bridge(WebKitWebView* web_view, GtkWindow* parent);
+
+// Call before the web view loads: the origin the embedded UI is served from
+// (the proxy URL's scheme://host:port). The callapi bridge forwards the
+// desktop-mode API traffic there.
+void set_bridge_proxy_origin(std::string const& origin);
 
 }  // namespace sp
 #endif  // HAVE_WEBKIT

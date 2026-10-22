@@ -46,6 +46,12 @@ add_executable(RivetHost
 if(WEBKIT_FOUND)
   target_compile_definitions(RivetHost PRIVATE HAVE_WEBKIT=1)
   target_link_libraries(RivetHost PRIVATE PkgConfig::WEBKIT)
+  # The callapi bridge includes libsoup headers; the symbols themselves come
+  # from libsoup-3.0 already riding the WebKitGTK dependency closure —
+  # adding a soup link target here reorders the fragile gtk/pango link
+  # closure on machines where multiple gtk4 builds coexist.
+  pkg_check_modules(SOUP REQUIRED libsoup-3.0)
+  target_include_directories(RivetHost PRIVATE ${SOUP_INCLUDE_DIRS})
   # The web-process extension injects the official-UI desktop bridge into
   # the page world (UserContentManager scripts miss the first document on
   # WebKitGTK 2.52). Staged into app/webext where the UI process looks for
