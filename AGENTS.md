@@ -57,3 +57,9 @@ suite 只要未执行、超时、失败或没有产生本次运行的新证据�
 ├── docs/               产品官网（GitHub Pages → syncpilot.jrtx.site）
 └── scripts/            gen-c-strings.mjs（i18n → C 头）、install-rslsync.sh
 ```
+
+## 组合定位（Portfolio placement）
+
+- 轨道与授权：轨道 4 社区引流；授权形态：AGPL-3.0；商业归属：永久免费（依附第三方 Resilio，不作为生意）。
+- 组合归属唯一权威：[PORTFOLIO.md](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/PORTFOLIO.md)（turinglambdaai.github.io 仓库）。改归属/授权先改权威档，再同步本节。
+- 纪律：价格只进本仓 `PRICING.md`，且收费开始时才发布；README 与产品站不做价格预告。
