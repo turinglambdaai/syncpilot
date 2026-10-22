@@ -2,7 +2,7 @@
 
 All notable changes to SyncPilot are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.8.4] - 2026-10-22
 
 ### Fixed
 
@@ -13,6 +13,7 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
   required the module (the test suite included) — the exception handler
   never sees a dyld-level abort. macOS now resolves versioned names only
   (Racket's bundled `libcrypto.3`); Linux keeps the unversioned fallback.
+- **The first-run rslsync installer works again**: `http-fetch` ran `bytes->string/utf-8` over the status value that `get-pure-port/headers` `#:status? #t` already returns as a string, so every successful 200 response died on a contract violation — the download card failed unconditionally on every machine, with the retry loop dressing it up as a network error ("check your network connection"). The status parsing now accepts the string shape (bytes kept as a guard for older net/url revisions) in a `response-code` helper covered by its own tests.
 - **The embedded official UI renders again in desktop mode**: the desktop bridge's `callapi` method answered a hardcoded `null` ("no entries are reachable in this UI build") — true for the UI it was written against, false since the daemon's Web UI moved its whole data plane into the desktop bridge (with `window.btsync` present, the UI's jQuery.ajax override routes every `/gui/` and `/api/` request through `callapi` and never speaks HTTP to the proxy, so the stub left the interface with no data at all: a blank window). `callapi` now forwards `{action, params, type}` to the same origin the web view loads — the auth-injecting proxy — over a libsoup session and answers with the daemon's response; transport and HTTP failures surface as `{"error": …}` results rather than rejected promises (a rejection crashes the UI's request wrapper on a missing `.error` field). The request finishes when the daemon answers, so the ~30s core-events long poll passes through untouched.
 
 ## [0.8.3] - 2026-10-15
@@ -86,7 +87,6 @@ app's own behaviour.
 
 ### Fixed
 
-- **The first-run rslsync installer works again**: `http-fetch` ran `bytes->string/utf-8` over the status value that `get-pure-port/headers` `#:status? #t` already returns as a string, so every successful 200 response died on a contract violation — the download card failed unconditionally on every machine, with the retry loop dressing it up as a network error ("check your network connection"). The status parsing now accepts the string shape (bytes kept as a guard for older net/url revisions) in a `response-code` helper covered by its own tests.
 - **SIGTERM shuts the app down instead of killing the backend under a living window** ([#3](https://github.com/turinglambdaai/syncpilot/issues/3)): OS signals bypass the GTK main loop, so the orderly teardown never ran — `systemd --user stop`, session logout and `killall` all left a zombie window over a dead backend. The rivet shutdown hook is now installed once the embedded runtime finishes booting: installing in `main()` loses the race to the Racket runtime's own SIGTERM handler, which is what kept the hook inert. Teardown is exactly-once across the GTK and signal paths, and each step traces into the host log.
 - **README described a tar.gz-only world that ended in 0.7.0**: the "Honest gaps" entry claiming no deb/rpm/AppImage packaging and the Install section's "that tarball is the only artifact — Linux x64 only" were both stale; Install now documents the real per-architecture matrix (deb · rpm · AppImage · tar.gz · zip, x64 + arm64, with `SHA256SUMS`, SBOM, notices and the signed update manifest). The product-site URL is also gone from the README header — the GitHub About field is the single home for it.
 
