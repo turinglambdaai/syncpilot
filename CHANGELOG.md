@@ -6,6 +6,13 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ### Fixed
 
+- **The SHA-256 helper no longer loads an unversioned libcrypto on macOS.**
+  `httputil.rkt`'s native SHA-256 shortcut opened bare `libcrypto`; current
+  macOS releases make dyld abort the whole process on the unversioned
+  `/usr/lib/libcrypto.dylib` stub, which killed every process that merely
+  required the module (the test suite included) — the exception handler
+  never sees a dyld-level abort. macOS now resolves versioned names only
+  (Racket's bundled `libcrypto.3`); Linux keeps the unversioned fallback.
 - **The embedded official UI renders again in desktop mode**: the desktop bridge's `callapi` method answered a hardcoded `null` ("no entries are reachable in this UI build") — true for the UI it was written against, false since the daemon's Web UI moved its whole data plane into the desktop bridge (with `window.btsync` present, the UI's jQuery.ajax override routes every `/gui/` and `/api/` request through `callapi` and never speaks HTTP to the proxy, so the stub left the interface with no data at all: a blank window). `callapi` now forwards `{action, params, type}` to the same origin the web view loads — the auth-injecting proxy — over a libsoup session and answers with the daemon's response; transport and HTTP failures surface as `{"error": …}` results rather than rejected promises (a rejection crashes the UI's request wrapper on a missing `.error` field). The request finishes when the daemon answers, so the ~30s core-events long poll passes through untouched.
 
 ## [0.8.3] - 2026-10-15
