@@ -62,12 +62,16 @@ cat > "$SCRIPT" <<RKT
   (define path (build-path dist file))
   (unless (file-exists? path)
     (error 'make-update-manifest "missing installer: ~a" path))
+  ;; component #f: one installable per architecture — the feed shape every
+  ;; shipped client already parses (rivet 0.12.0 added the slot for
+  ;; multi-artifact products).
   (update-artifact 'linux architecture
                    (string-append base-url "/" file)
                    (sha256-file/hex path)
                    (file-size path)
                    'targz
-                   '()))
+                   '()
+                   #f))
 
 (define manifest
   (update-manifest "site.jrtx.syncpilot"
