@@ -50,3 +50,9 @@ This page is the single source of truth; the README summarizes it.
   directory (tar.gz/zip installs), while deb/rpm installs update by simply
   installing the new package. Either way the daemon's state
   (`~/.local/share/site.jrtx.syncpilot`) is never touched.
+
+## 当前交付优先级（2026-10-23）
+
+Linux 维护模式：只补第三方兼容、鉴权/进程恢复、安装形态的验证更新交接与反馈；不新增平台/云/收费层。
+
+执行场景与完成标准见[本仓审查 issue](https://github.com/turinglambdaai/syncpilot/issues/10)及家族[交付标准](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/PRODUCT-STANDARD.md)。未完成的跨平台、硬件或真实支付验证仍是显式门禁；本节不表示这些验证已通过。后续一次认领一个切片，证据回填本文件与 issue。
