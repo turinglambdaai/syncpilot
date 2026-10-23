@@ -458,7 +458,7 @@ var _hmt = _hmt || [];
       <ol>
         <li data-i18n="fu.s1">有新版 → 应用内下载。字节数与 SHA-256 先对签名 manifest 核验，通过才交给你。</li>
         <li data-i18n="fu.s2">验证过的 tar.gz 落在数据目录的 updates/ 下，并有打开文件夹的入口。</li>
-        <li data-i18n-html="fu.s3">手动应用：把 tar.gz 解压覆盖应用目录（tar.gz / zip 安装的用户），重启 <code>RivetHost</code>。deb / rpm 用户更简单：直接下载安装新版包即可。</li>
+        <li data-i18n-html="fu.s3">手动应用：把 tar.gz 解压覆盖应用目录（tar.gz / zip 安装的用户），重启 <code>RivetHost</code>。deb / rpm 用户更简单：直接下载安装新版包即可。AppImage 用户：从 release 页下载新文件替换旧的（带 <code>.sha256</code> 可先核对）。</li>
       </ol>
       <div class="callout">
         <div>
@@ -466,7 +466,7 @@ var _hmt = _hmt || [];
           <div class="callout-body" data-i18n="fu.safe-body">更新器只写 updates/ 目录；设置、凭据、storage/ 与已同步文件全部原样保留。</div>
         </div>
       </div>
-      <p data-i18n-html="fu.legacy">0.7.x 起用的就是这条 <code>update-stable.json</code> feed——在应用内「检查更新」即可直接升上来。0.6.1 及更早版本的下载器有 302 重定向缺陷（0.7.0 已修复），请手动下载新安装包升级一次，此后一切自动。</p>
+      <p data-i18n-html="fu.legacy">0.7.x 起用的就是这条 <code>update-stable.json</code> feed——在应用内「检查更新」即可拿到新版本。0.6.1 及更早版本的下载器有 302 重定向缺陷（0.7.0 已修复），请手动下载新安装包升级一次；此后的每日检查和应用内下载是自动的，应用更新这一步仍按上面的安装形态手动完成。</p>
     </section>
 
     <!-- =================== FAQ: uninstall =================== -->
@@ -603,10 +603,10 @@ const i18n = {
     'fu.intro': 'The in-app updater silently checks the Ed25519-signed <code>update-stable.json</code> feed once a day. Check now: Settings → <code>Check for updates</code> (bypasses the 24-hour throttle).',
     'fu.s1': 'Update available → download in-app. Size and SHA-256 are verified against the signed manifest before anything is trusted.',
     'fu.s2': 'The verified tar.gz lands under updates/ in the data directory, with an open-folder handoff.',
-    'fu.s3': 'Apply manually: extract the tar.gz over the app directory (tar.gz / zip installs) and restart <code>RivetHost</code>. Simpler for deb / rpm: download and install the new package.',
+    'fu.s3': 'Apply manually: extract the tar.gz over the app directory (tar.gz / zip installs) and restart <code>RivetHost</code>. Simpler for deb / rpm: download and install the new package. AppImage: download the new file from the release page and replace the old one (check the <code>.sha256</code> sidecar first).',
     'fu.safe-title': 'rslsync data is never touched',
     'fu.safe-body': 'The updater only writes under updates/. Settings, credentials, storage/ and synced files all stay exactly as they are.',
-    'fu.legacy': 'Installs from 0.7.x already use this same <code>update-stable.json</code> feed — just run “Check for updates” in the app to come up. 0.6.1 and earlier carry a 302-redirect flaw in the downloader (fixed in 0.7.0): update manually once, and everything is automatic from there.',
+    'fu.legacy': 'Installs from 0.7.x already use this same <code>update-stable.json</code> feed — just run “Check for updates” in the app to pick up a new version. 0.6.1 and earlier carry a 302-redirect flaw in the downloader (fixed in 0.7.0): update manually once; from then on the daily check and the in-app download are automatic, while applying stays a manual step per the install format above.',
     'fm.title': 'How do I uninstall?',
     'fm.s1': 'Turn off autostart first: Settings → Desktop → Launch at login (this removes the autostart entry).',
     'fm.s2': 'Remove the app: <code>deb</code> via <code>sudo apt remove syncpilot</code>; <code>rpm</code> via <code>sudo dnf remove syncpilot</code>; AppImage / tar.gz / zip — just delete the file or directory.',
@@ -713,10 +713,10 @@ const i18n = {
     'fu.intro': '应用内更新器每天静默检查一次 Ed25519 签名的 <code>update-stable.json</code> feed。想立刻查：设置 → <code>Check for updates</code>（不受 24 小时节流限制）。',
     'fu.s1': '有新版 → 应用内下载。字节数与 SHA-256 先对签名 manifest 核验，通过才交给你。',
     'fu.s2': '验证过的 tar.gz 落在数据目录的 updates/ 下，并有打开文件夹的入口。',
-    'fu.s3': '手动应用：把 tar.gz 解压覆盖应用目录（tar.gz / zip 安装的用户），重启 <code>RivetHost</code>。deb / rpm 用户更简单：直接下载安装新版包即可。',
+    'fu.s3': '手动应用：把 tar.gz 解压覆盖应用目录（tar.gz / zip 安装的用户），重启 <code>RivetHost</code>。deb / rpm 用户更简单：直接下载安装新版包即可。AppImage 用户：从 release 页下载新文件替换旧的（带 <code>.sha256</code> 可先核对）。',
     'fu.safe-title': 'rslsync 数据绝不触碰',
     'fu.safe-body': '更新器只写 updates/ 目录；设置、凭据、storage/ 与已同步文件全部原样保留。',
-    'fu.legacy': '0.7.x 起用的就是这条 <code>update-stable.json</code> feed——在应用内「检查更新」即可直接升上来。0.6.1 及更早版本的下载器有 302 重定向缺陷（0.7.0 已修复），请手动下载新安装包升级一次，此后一切自动。',
+    'fu.legacy': '0.7.x 起用的就是这条 <code>update-stable.json</code> feed——在应用内「检查更新」即可拿到新版本。0.6.1 及更早版本的下载器有 302 重定向缺陷（0.7.0 已修复），请手动下载新安装包升级一次；此后的每日检查和应用内下载是自动的，应用更新这一步仍按上面的安装形态手动完成。',
     'fm.title': '怎么卸载？',
     'fm.s1': '先关自启：设置 → Desktop → Launch at login 关掉（会移除自启项）。',
     'fm.s2': '删应用：<code>deb</code> 用 <code>sudo apt remove syncpilot</code>；<code>rpm</code> 用 <code>sudo dnf remove syncpilot</code>；AppImage / tar.gz / zip 删文件或目录即可。',

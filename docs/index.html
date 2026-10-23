@@ -349,7 +349,7 @@ var _hmt = _hmt || [];
       </div>
       <div class="card animate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/><path d="m9 12 2 2 4-4"/></svg></div>
-        <h3 data-i18n="f5.title">自动更新</h3>
+        <h3 data-i18n="f5.title">在线更新</h3>
         <p data-i18n="f5.body">每天后台检查一次 Ed25519 签名的 manifest，下载前必先询问、验签通过才落盘；rslsync 数据绝不触碰。</p>
       </div>
       <div class="card animate">
@@ -402,7 +402,7 @@ var _hmt = _hmt || [];
   <div class="container">
     <div class="section-head animate">
       <h2 data-i18n="download.title">获取 SyncPilot</h2>
-      <p data-i18n="download.sub">安装即用。之后 SyncPilot 会保持自我更新——每天按签名 manifest 检查一次，下载前必先询问。缺失官方 rslsync 二进制时，会在首次启动时自动获取。</p>
+      <p data-i18n="download.sub">安装即用。之后每天按签名 manifest 静默检查一次，下载前必先询问；验证过的更新交到你手上，应用那一步按安装形态手动完成（见手册）。缺失官方 rslsync 二进制时，会在首次启动时自动获取。</p>
     </div>
     <div class="dl-cards animate">
       <a class="dl-card" href="https://github.com/turinglambdaai/syncpilot/releases/latest/download/syncpilot-linux-x64.deb">
@@ -462,7 +462,7 @@ const i18n = {
     'f3.body': 'No rslsync yet? One click fetches the official binary from Resilio&apos;s CDN, sha256-verified into <code>~/.local/bin</code>. Data paths never change between versions — unpack an upgrade and keep syncing.',
     'f4.title': 'Autostart &amp; settings',
     'f4.body': 'Launch at login via XDG autostart, single-instance window restore, and a standalone native settings window for the daemon, port and credentials.',
-    'f5.title': 'Automatic updates',
+    'f5.title': 'Online updates',
     'f5.body': 'A daily background check against an Ed25519-signed manifest. SyncPilot asks before downloading, verifies the signature, and never touches rslsync state.',
     'f6.title': 'Secure by default',
     'f6.body': 'The Web UI stays on <code>127.0.0.1</code> behind an auth-injecting loopback proxy — no login prompts, and the daemon never serves an unauthenticated request.',
@@ -476,7 +476,7 @@ const i18n = {
     's3.body': 'Activate and add folders through the official wizard — exactly like on Windows and macOS.',
     'secure.text': '<b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon&apos;s credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.',
     'download.title': 'Get SyncPilot',
-    'download.sub': 'Install and run. After that SyncPilot keeps itself current — a daily signed-manifest check asks before downloading. The official rslsync binary is fetched on first start if missing.',
+    'download.sub': 'Install and run. After that a daily signed-manifest check runs silently and always asks before downloading; the verified update is handed to you, and applying it stays one manual step per install format (see the manual). The official rslsync binary is fetched on first start if missing.',
     'dl.sub': 'Linux · x64 / arm64 · signed update manifest',
     'dl.all-releases': 'All releases',
     'footer.legal-pre': 'SyncPilot is free software under',
@@ -505,7 +505,7 @@ const i18n = {
     'f3.body': '机器上还没有 rslsync？一键从官方 CDN 下载，经 sha256 校验装入 <code>~/.local/bin</code>。数据路径跨版本不变，解压新版即可继续同步。',
     'f4.title': '自启与设置',
     'f4.body': 'XDG autostart 开机自启、单实例窗口唤起，还有独立的原生设置窗口管理守护进程、端口与凭据。',
-    'f5.title': '自动更新',
+    'f5.title': '在线更新',
     'f5.body': '每天后台检查一次 Ed25519 签名的 manifest，下载前必先询问、验签通过才落盘；rslsync 数据绝不触碰。',
     'f6.title': '默认安全',
     'f6.body': 'Web UI 仅留在 <code>127.0.0.1</code>，经注入认证的环回代理访问——不弹登录框，守护进程绝不响应未认证请求。',
@@ -519,7 +519,7 @@ const i18n = {
     's3.body': '通过官方向导完成激活并添加文件夹——与 Windows、macOS 上完全一致。',
     'secure.text': '<b>你的密钥与文件永不出机。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。所有 P2P 流量均由官方二进制处理。',
     'download.title': '获取 SyncPilot',
-    'download.sub': '安装即用。之后 SyncPilot 会保持自我更新——每天按签名 manifest 检查一次，下载前必先询问。缺失官方 rslsync 二进制时，会在首次启动时自动获取。',
+    'download.sub': '安装即用。之后每天按签名 manifest 静默检查一次，下载前必先询问；验证过的更新交到你手上，应用那一步按安装形态手动完成（见手册）。缺失官方 rslsync 二进制时，会在首次启动时自动获取。',
     'dl.sub': 'Linux · x64 / arm64 · 签名更新 manifest',
     'footer.legal-pre': 'SyncPilot 为',
     'footer.legal-post': '自由软件，与 Resilio, Inc. 无隶属关系。「Resilio Sync」为其所有者的商标。',

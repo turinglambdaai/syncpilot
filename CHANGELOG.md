@@ -2,6 +2,20 @@
 
 All notable changes to SyncPilot are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **The update contract is now documented per install format.** docs/UPDATE.md
+  (plus a new complete Chinese twin, docs/UPDATE.zh-CN.md) states exactly
+  what the in-app updater does and what stays manual for each of
+  tar.gz/zip, deb, rpm and AppImage, adds a recovery-and-failure-modes
+  section (crash watchdog, port conflict, first-run download failure, data
+  retention on exit/uninstall, redacted failure text) and a trust-boundary
+  statement. The product site's update copy no longer implies that applying
+  an update is automatic — the daily check and the in-app download are;
+  applying never was — and the manual's apply step now covers AppImage too.
+
 ## [0.8.4] - 2026-10-22
 
 ### Fixed
