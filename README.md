@@ -31,7 +31,7 @@ Free Linux maintenance project under AGPL-3.0. Resilio’s separate licence and 
 
 ## Honest gaps
 
-- **Updates don't self-replace** — the updater downloads and signature-verifies the new tar.gz, but applying it is still a manual extract over the app directory
+- **Updates don't self-replace** — the updater downloads and signature-verifies the new tar.gz, but applying it stays a manual step per install format: extract for tar.gz/zip, package install for deb/rpm, file swap for AppImage
 
 ## Install
 
@@ -55,7 +55,7 @@ SyncPilot has an in-app updater; the full contract lives in [docs/UPDATE.md](doc
 
 - it checks the signed `update-stable.json` feed **once a day** (silent startup auto-check, throttled to one check per 24 h; a manual check in the UI always runs),
 - an available update is downloaded **in-app** and its size and SHA-256 are verified against the signed manifest before it is offered,
-- **applying it is manual**: extract the new tar.gz over the app directory and restart `RivetHost` — rslsync data and settings are never touched.
+- **applying it stays manual, per install format**: extract the verified tar.gz over the app directory (tar.gz/zip), install the new package (deb/rpm), or replace the AppImage — rslsync data and settings are never touched. The per-format handoff and the recovery playbook live in [docs/UPDATE.md](docs/UPDATE.md).
 
 ## Building from source
 

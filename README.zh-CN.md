@@ -31,7 +31,7 @@ AGPL-3.0 许可的免费 Linux 维护项目。Resilio 的独立许可和服务�
 
 ## 诚实缺口
 
-- **更新不自动替换**——更新器会下载并通过签名校验新 tar.gz，但应用更新仍是手动解压覆盖应用目录
+- **更新不自动替换**——更新器会下载并通过签名校验新 tar.gz，但应用更新仍是手动步骤、按安装形态各不相同：tar.gz/zip 解压覆盖，deb/rpm 安装新包，AppImage 替换文件
 
 ## 安装
 
@@ -51,11 +51,11 @@ AGPL-3.0 许可的免费 Linux 维护项目。Resilio 的独立许可和服务�
 
 ## 更新
 
-SyncPilot 有应用内更新器，完整契约见 [docs/UPDATE.md](docs/UPDATE.md)。简述：
+SyncPilot 有应用内更新器，完整契约见 [docs/UPDATE.zh-CN.md](docs/UPDATE.zh-CN.md)。简述：
 
 - **每天静默检查一次**签名的 `update-stable.json` feed（启动时后台自动检查，24 小时节流；UI 里手动检查不受限），
 - 有可用更新时**应用内下载**，先对照签名 manifest 校验大小与 SHA-256 再交付，
-- **应用更新是手动步骤**：把新 tar.gz 解压覆盖应用目录后重启 `RivetHost`——rslsync 数据与设置绝不被触碰。
+- **应用更新是手动步骤、按安装形态各不相同**：tar.gz/zip 解压覆盖应用目录，deb/rpm 安装新包，AppImage 替换文件——rslsync 数据与设置绝不被触碰。各形态交接与恢复手册见 [docs/UPDATE.zh-CN.md](docs/UPDATE.zh-CN.md)。
 
 ## 从源码构建
 
