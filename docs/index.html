@@ -266,6 +266,12 @@ var _hmt = _hmt || [];
   #product-support a:focus-visible { outline:2px solid currentColor; outline-offset:4px; }
   html:lang(en) #product-support .support-zh, html:lang(zh) #product-support .support-en { display:none; }
 </style>
+<style id="product-start-style">
+.product-availability{font-size:.95rem;line-height:1.65;max-width:72ch;margin:18px 0;opacity:.85} .hero .product-availability{margin-left:auto;margin-right:auto}
+.product-start{max-width:1120px;margin:64px auto;padding:32px 24px;border-top:1px solid var(--border,#aaa);font:inherit;line-height:1.65}
+.product-start h2{font-size:clamp(1.7rem,3vw,2.4rem);letter-spacing:-.025em;margin:0 0 16px}.product-start h3{font-size:1.05rem;margin:0 0 10px}.product-start p{margin:0 0 16px;max-width:74ch}.product-start-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;margin:28px 0}.product-start a{text-decoration:underline;text-underline-offset:4px;overflow-wrap:anywhere}.product-start a:focus-visible{outline:2px solid currentColor;outline-offset:5px}.product-start .start-links{display:flex;gap:16px 24px;flex-wrap:wrap}.product-start .start-status{font-weight:600}.product-start .start-limits{font-size:.95em}
+html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}@media(max-width:700px){.product-start{margin:40px auto;padding:24px 20px}.product-start-grid{grid-template-columns:1fr;gap:18px}}
+</style>
 </head>
 <body>
 
@@ -297,6 +303,7 @@ var _hmt = _hmt || [];
   <div class="container">
     <div class="eyebrow animate" data-i18n="hero.eyebrow">Linux 桌面版 Resilio Sync 客户端</div>
     <h1 class="animate"><span data-i18n="hero.h1a">原汁原味的 Resilio Sync 体验，</span><br /><span class="soft" data-i18n="hero.h1b">终于登陆 Linux。</span></h1>
+<p class="reader-en product-availability" lang="en">Development preview. Free Linux maintenance project under AGPL-3.0. Resilio’s separate licence and service limits still apply; no SyncPilot paid tier.</p><p class="reader-zh product-availability" lang="zh">开发预览。AGPL-3.0 许可的免费 Linux 维护项目。Resilio 的独立许可和服务限制仍适用；SyncPilot 不设付费层。</p>
     <p class="hero-sub animate" data-i18n-html="hero.sub">SyncPilot 把<strong>官方 Resilio Web UI</strong>装进原生桌面窗口，并在背后托管官方 <code style="font-family:var(--font-mono);font-size:0.9em;">rslsync</code> 守护进程。每一屏都是官方界面——无需重新学习。</p>
     <div class="hero-actions animate">
       <a class="btn btn-primary" href="https://github.com/turinglambdaai/syncpilot/releases/latest/download/syncpilot-linux-x64.deb" data-i18n="hero.download">下载</a>
@@ -393,7 +400,7 @@ var _hmt = _hmt || [];
   <div class="container">
     <div class="secure animate">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <p data-i18n-html="secure.text"><b>你的密钥与文件永不出机。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。所有 P2P 流量均由官方二进制处理。</p>
+      <p data-i18n-html="secure.text"><b>本地控制，明确的对端文件传输。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。官方二进制向对端传输配置的文件，也可能使用发现或中继服务。</p>
     </div>
   </div>
 </section>
@@ -414,11 +421,14 @@ var _hmt = _hmt || [];
   </div>
 </section>
 
+<section id="start-here" class="product-start" aria-label="Get started / 开始使用">
+<h2 class="reader-en " lang="en">Start with one useful session.</h2><h2 class="reader-zh " lang="zh">从一次有效使用开始。</h2><p class="reader-en start-status" lang="en">Free Linux maintenance project under AGPL-3.0. Resilio’s separate licence and service limits still apply; no SyncPilot paid tier.</p><p class="reader-zh start-status" lang="zh">AGPL-3.0 许可的免费 Linux 维护项目。Resilio 的独立许可和服务限制仍适用；SyncPilot 不设付费层。</p><p class="reader-en " lang="en">Linux only. The official rslsync binary and its own terms are separate from SyncPilot; Windows/macOS ports are not planned deliveries.</p><p class="reader-zh " lang="zh">仅支持 Linux。官方 rslsync 二进制及其条款独立于 SyncPilot；Windows/macOS 移植不是当前交付。</p><div class="product-start-grid"><article><h3 class="reader-en " lang="en">01</h3><h3 class="reader-zh " lang="zh">01</h3><p class="reader-en " lang="en">Launch with a disposable test folder and confirm the selected daemon binary/version.</p><p class="reader-zh " lang="zh">先使用可丢弃的测试文件夹启动，确认所选守护进程二进制与版本。</p></article><article><h3 class="reader-en " lang="en">02</h3><h3 class="reader-zh " lang="zh">02</h3><p class="reader-en " lang="en">Connect a second test device through the official UI and verify a small file in each direction.</p><p class="reader-zh " lang="zh">通过官方界面连接第二台测试设备，双向验证一个小文件。</p></article><article><h3 class="reader-en " lang="en">03</h3><h3 class="reader-zh " lang="zh">03</h3><p class="reader-en " lang="en">Test daemon stop/restart, login startup and recovery before giving it valuable folders.</p><p class="reader-zh " lang="zh">提供重要文件夹前，测试守护进程停止重启、登录自启与恢复。</p></article></div><p class="reader-en start-limits" lang="en">Third-party compatibility, daemon authentication/recovery and installation-specific updates remain tracked in <a href="https://github.com/turinglambdaai/syncpilot/issues/10">#10</a>. Server/static installs can require operator-managed updates.</p><p class="reader-zh start-limits" lang="zh">第三方兼容、守护进程鉴权恢复及各安装形态更新仍在 <a href="https://github.com/turinglambdaai/syncpilot/issues/10">#10</a> 跟进。服务或静态安装可能需要运维者管理更新。</p><div class="start-links"><a class="reader-en" lang="en" href="https://github.com/turinglambdaai/syncpilot/blob/main/docs/USER-GUIDE.md">Installation, privacy &amp; recovery</a><a class="reader-zh" lang="zh" href="https://github.com/turinglambdaai/syncpilot/blob/main/docs/USER-GUIDE.zh-CN.md">安装、隐私与恢复</a><a href="https://github.com/turinglambdaai/syncpilot/issues"><span class="reader-en " lang="en">Get help</span><span class="reader-zh " lang="zh">反馈与帮助</span></a></div>
+</section>
 <footer>
   <span data-i18n="footer.legal-pre">SyncPilot 为</span> <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE">AGPL-3.0</a> <span data-i18n="footer.legal-post">自由软件，与 Resilio, Inc. 无隶属关系。「Resilio Sync」为其所有者的商标。</span><br /><br />
   <a href="https://github.com/turinglambdaai/syncpilot" data-i18n="footer.source">GitHub 查看源码</a>
 </footer>
-<nav id="product-support" aria-label="Support / 支持"><a href="https://github.com/turinglambdaai/syncpilot/issues"><span class="support-zh">反馈</span><span class="support-en" lang="en">Feedback</span></a> <a href="https://github.com/turinglambdaai/syncpilot/releases"><span class="support-zh">发布与更新</span><span class="support-en" lang="en">Releases</span></a> <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE"><span class="support-zh">源码许可</span><span class="support-en" lang="en">Source license</span></a> <a class="support-zh" href="https://github.com/turinglambdaai/syncpilot/blob/main/PRICING.zh-CN.md">产品与收费方案</a> <a class="support-en" lang="en" href="https://github.com/turinglambdaai/syncpilot/blob/main/PRICING.md">Product & pricing</a></nav>
+<nav id="product-support" aria-label="Support / 支持"><a href="https://github.com/turinglambdaai/syncpilot/issues"><span class="support-zh">反馈</span><span class="support-en" lang="en">Feedback</span></a> <a href="https://github.com/turinglambdaai/syncpilot/releases"><span class="support-zh">发布与更新</span><span class="support-en" lang="en">Releases</span></a> <a href="https://github.com/turinglambdaai/syncpilot/blob/main/LICENSE"><span class="support-zh">源码许可</span><span class="support-en" lang="en">Source license</span></a> <a class="support-zh" href="https://github.com/turinglambdaai/syncpilot/blob/main/docs/USER-GUIDE.zh-CN.md">使用与帮助</a> <a class="support-en" lang="en" href="https://github.com/turinglambdaai/syncpilot/blob/main/docs/USER-GUIDE.md">Usage & help</a></nav>
 
 <script>
 const io = new IntersectionObserver((entries) => {
@@ -474,7 +484,7 @@ const i18n = {
     's2.body': 'SyncPilot starts the official daemon and hands the window to the official interface. No rslsync yet? One click fetches it.',
     's3.title': 'Sync',
     's3.body': 'Activate and add folders through the official wizard — exactly like on Windows and macOS.',
-    'secure.text': '<b>Your keys and files never leave your machine.</b> SyncPilot generates the daemon&apos;s credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. All P2P traffic is handled by the official binary.',
+    'secure.text': '<b>Local controls; explicit peer-to-peer transfer.</b> SyncPilot generates the daemon&apos;s credentials locally, serves the official UI through a loopback-only proxy, and ships no telemetry of its own. The official binary transfers configured files to peers and may use discovery or relay services.',
     'download.title': 'Get SyncPilot',
     'download.sub': 'Install and run. After that a daily signed-manifest check runs silently and always asks before downloading; the verified update is handed to you, and applying it stays one manual step per install format (see the manual). The official rslsync binary is fetched on first start if missing.',
     'dl.sub': 'Linux · x64 / arm64 · signed update manifest',
@@ -517,7 +527,7 @@ const i18n = {
     's2.body': 'SyncPilot 启动官方守护进程，并把窗口交给官方界面。还没有 rslsync？一键获取。',
     's3.title': '同步',
     's3.body': '通过官方向导完成激活并添加文件夹——与 Windows、macOS 上完全一致。',
-    'secure.text': '<b>你的密钥与文件永不出机。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。所有 P2P 流量均由官方二进制处理。',
+    'secure.text': '<b>本地控制，明确的对端文件传输。</b>SyncPilot 在本地生成守护进程凭据，官方 UI 经仅环回的代理提供服务，自身不带任何遥测。官方二进制向对端传输配置的文件，也可能使用发现或中继服务。',
     'download.title': '获取 SyncPilot',
     'download.sub': '安装即用。之后每天按签名 manifest 静默检查一次，下载前必先询问；验证过的更新交到你手上，应用那一步按安装形态手动完成（见手册）。缺失官方 rslsync 二进制时，会在首次启动时自动获取。',
     'dl.sub': 'Linux · x64 / arm64 · 签名更新 manifest',

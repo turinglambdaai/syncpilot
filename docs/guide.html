@@ -217,6 +217,7 @@ var _hmt = _hmt || [];
   s.parentNode.insertBefore(hm, s);
 })();
 </script>
+<style>.guide-status{margin:20px 0;padding:16px 20px;border:1px solid currentColor;border-radius:10px;font-size:.95rem;line-height:1.65}.guide-status p{margin:0 0 8px}.guide-status a{text-decoration:underline;text-underline-offset:4px}html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}</style>
 </head>
 <body>
 
@@ -247,6 +248,7 @@ var _hmt = _hmt || [];
   <div class="container">
     <div class="eyebrow" data-i18n="hero.eyebrow">使用手册</div>
     <h1 data-i18n="hero.h1">把 SyncPilot 用明白</h1>
+<aside class="guide-status"><p class="reader-en " lang="en">Free Linux maintenance project under AGPL-3.0. Resilio’s separate licence and service limits still apply; no SyncPilot paid tier.</p><p class="reader-zh " lang="zh">AGPL-3.0 许可的免费 Linux 维护项目。Resilio 的独立许可和服务限制仍适用；SyncPilot 不设付费层。</p><a class="reader-en" lang="en" href="https://github.com/turinglambdaai/syncpilot/blob/main/docs/USER-GUIDE.md">Current installation, privacy and recovery</a><a class="reader-zh" lang="zh" href="https://github.com/turinglambdaai/syncpilot/blob/main/docs/USER-GUIDE.zh-CN.md">当前安装、隐私与恢复</a></aside>
     <p class="lead" data-i18n="hero.lead">安装、守护进程、设置、更新与常见问题——短句，动词开头，一页说清。</p>
   </div>
 </section>
@@ -555,7 +557,7 @@ const i18n = {
     'w.manual': 'Don’t want to wait?',
     'w.manual-body': 'Settings → Daemon → <code>Restart Daemon</code> brings it back immediately.',
     'c.title': 'Config editing',
-    'c.intro': 'SyncPilot generates <code>rslsync.conf</code> in the data directory, then starts the daemon. The file is chmod <code>0600</code>; credentials never leave the machine.',
+    'c.intro': 'SyncPilot generates <code>rslsync.conf</code> in the data directory, then starts the daemon. The file is chmod <code>0600</code>; control credentials stay local, while the official daemon transfers configured files to peers.',
     'c.warn-title': 'Hand edits get overwritten',
     'c.warn-body': 'The conf is regenerated before every daemon start. Change port, device name or credentials in the Settings window — hand edits to <code>rslsync.conf</code> are lost on the next start.',
     'c.port': 'Change the port',

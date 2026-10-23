@@ -6,12 +6,18 @@ A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) 
 
 **English** · [中文](README.zh-CN.md)
 
-SyncPilot runs and manages the official `rslsync` daemon behind a native window that shows the official Resilio Web UI. It talks to the daemon over loopback only — your keys and files never leave your machine.
+SyncPilot runs and manages the official `rslsync` daemon behind a native window that shows the official Resilio Web UI. It talks to the daemon over loopback only — its control channel stays local; the official daemon transfers configured files to peers.
 <p align="center">
   <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
 </p>
 
 SyncPilot is built on [Rivet](https://github.com/turinglambdaai/rivet): one Racket domain core (daemon manager, conf generation, auth-injecting proxy, settings) driving a first-party GTK4 host over typed RPC — the host only renders and interacts, all logic lives in the backend.
+
+## Start here
+
+Free Linux maintenance project under AGPL-3.0. Resilio’s separate licence and service limits still apply; no SyncPilot paid tier. Linux only. The official rslsync binary and its own terms are separate from SyncPilot; Windows/macOS ports are not planned deliveries.
+
+[Installation, first use, privacy, backup and recovery](docs/USER-GUIDE.md) · [简体中文](docs/USER-GUIDE.zh-CN.md)
 
 ## Features
 
@@ -79,7 +85,7 @@ Details and manual CMake steps: [linux/README.md](linux/README.md).
 └────────────────────────────┘  └───────────────┘
 ```
 
-The Racket backend generates an `rslsync.conf` (loopback-only Web UI, random credentials, no API key — rslsync 3.x rejects locally generated ones) and launches the official binary in the foreground. The window loads the official Web UI through a second loopback listener that injects the basic-auth credentials, so the interface is pixel-for-pixel the official one and the daemon never serves an unauthenticated request. All Resilio Sync traffic (P2P, trackers, relays) is handled by the official binary itself; SyncPilot never touches your keys or files.
+The Racket backend generates an `rslsync.conf` (loopback-only Web UI, random credentials, no API key — rslsync 3.x rejects locally generated ones) and launches the official binary in the foreground. The window loads the official Web UI through a second loopback listener that injects the basic-auth credentials, so the interface is pixel-for-pixel the official one and the daemon never serves an unauthenticated request. All Resilio Sync traffic (P2P, trackers, relays) is handled by the official binary itself; file transfer and external discovery/relay traffic are owned by that daemon.
 
 ## Status
 
@@ -88,11 +94,3 @@ CI builds the host on ubuntu-24.04 and integration-smokes the real chain: `initi
 ## License
 
 [AGPL-3.0](LICENSE). Not affiliated with Resilio, Inc. "Resilio Sync" is a trademark of its respective owner.
-
-## Feedback and diagnostics
-
-Report reproducible bugs and feature requests through [GitHub Issues](https://github.com/turinglambdaai/syncpilot/issues). Include the release, OS/architecture and steps; inspect and redact diagnostics before sharing. Do not post API keys, license files, vault contents or private documents. For sensitive security reports, follow SECURITY.md when present; otherwise request a private contact route without disclosing sensitive details. Nothing is uploaded automatically.
-
-## Product & pricing
-
-Free maintenance tool. Read the complete [English pricing and product policy](PRICING.md) or [简体中文](PRICING.zh-CN.md) for target prices, free/paid boundaries and launch gates. This is a launch design, not a live offer; this documentation does not add payment restrictions to current development builds.
