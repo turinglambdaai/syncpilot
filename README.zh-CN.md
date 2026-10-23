@@ -6,12 +6,18 @@
 
 [English](README.md) · **中文**
 
-SyncPilot 在原生窗口内运行并管理官方 `rslsync` 守护进程，窗口里显示的就是官方 Resilio Web UI。它仅通过环回地址与守护进程通信——密钥与文件永不离开你的机器。
+SyncPilot 在原生窗口内运行并管理官方 `rslsync` 守护进程，窗口里显示的就是官方 Resilio Web UI。它仅通过环回地址与守护进程通信——控制通道位于本地；官方守护进程会将配置的文件同步给对端。
 <p align="center">
   <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
 </p>
 
 SyncPilot 以 [Rivet](https://github.com/turinglambdaai/rivet) 构建：一份 Racket 领域核心（守护进程管理、conf 生成、认证注入代理、设置）通过类型化 RPC 驱动第一方 GTK4 宿主——宿主只做渲染与交互，业务全部在后端。
+
+## 开始使用
+
+AGPL-3.0 许可的免费 Linux 维护项目。Resilio 的独立许可和服务限制仍适用；SyncPilot 不设付费层。 仅支持 Linux。官方 rslsync 二进制及其条款独立于 SyncPilot；Windows/macOS 移植不是当前交付。
+
+[安装、首次使用、隐私与备份恢复](docs/USER-GUIDE.zh-CN.md) · [English](docs/USER-GUIDE.md)
 
 ## 功能
 
@@ -79,7 +85,7 @@ raco test racket/       # 领域核心测试
 └────────────────────────────┘
 ```
 
-Racket 后端生成 `rslsync.conf`（Web UI 仅环回、随机凭据、不写 API key——rslsync 3.x 会拒绝本地生成的 key），以前台方式启动官方二进制。窗口通过第二个环回监听加载官方 Web UI——该代理自动注入 basic-auth 凭据，界面与官方逐像素一致，守护进程也永不响应未认证请求。所有 Resilio Sync 流量（P2P、tracker、relay）由官方二进制自行处理；SyncPilot 不碰你的密钥与文件。
+Racket 后端生成 `rslsync.conf`（Web UI 仅环回、随机凭据、不写 API key——rslsync 3.x 会拒绝本地生成的 key），以前台方式启动官方二进制。窗口通过第二个环回监听加载官方 Web UI——该代理自动注入 basic-auth 凭据，界面与官方逐像素一致，守护进程也永不响应未认证请求。所有 Resilio Sync 流量（P2P、tracker、relay）由官方二进制自行处理；文件传输及外部发现、中继流量由该守护进程负责。
 
 ## 状态
 
@@ -88,11 +94,3 @@ CI 在 ubuntu-24.04 上构建宿主并对真实链路做集成冒烟：`initiali
 ## 许可
 
 [AGPL-3.0](LICENSE)。与 Resilio, Inc. 无关。"Resilio Sync" 是其各自所有者的商标。
-
-## 反馈与诊断
-
-问题和建议请使用 [GitHub Issues](https://github.com/turinglambdaai/syncpilot/issues)，附版本、系统/架构和复现步骤。分享前先检查并脱敏诊断；不要公开 API key、授权凭据、密钥库或私有文档。安全敏感问题优先按 SECURITY.md 联系；未提供私密渠道时，先请求私下联系方式，不在公开 issue 中披露敏感细节。此入口不会自动上传数据。
-
-## 产品与收费
-
-免费保活。首发目标、免费边界与开卖门禁见 [PRICING.md](PRICING.zh-CN.md)；当前仍在开发，没有实际用户，不表示已开售，也不因此给开发版即时加收费墙。
