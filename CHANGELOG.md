@@ -4,6 +4,15 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Linux acceptance e2e survives at-spi2 3.x role-name drift (Ubuntu
+  26.04+).** pyatspi 3.x reports the push-button role display name as
+  "button" where 2.x says "push button", so the acceptance driver timed out
+  waiting for the settings button on an intact accessibility tree. Role
+  matching now prefers the stable `ROLE_*` enum and accepts both display
+  names.
+
 ### Changed
 
 - **The update contract is now documented per install format.** docs/UPDATE.md

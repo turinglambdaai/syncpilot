@@ -46,9 +46,22 @@ def wait_for(description, probe, timeout=45.0):
     raise AssertionError(f"timed out waiting for {description}")
 
 
-def find_named(root, name, expected_role=None):
+def has_role(node, constant, display_names):
+    # The ROLE_* enum is the only stable role identity: at-spi2 3.x renames
+    # the push-button display name to "button" where 2.x says "push button".
+    if constant is not None:
+        try:
+            if node.getRole() == constant:
+                return True
+        except Exception:
+            pass
+    return role(node) in display_names
+
+
+def find_button(root, name):
+    push_button = getattr(pyatspi, "ROLE_PUSH_BUTTON", None)
     for node in walk(root):
-        if (node.name or "") == name and (expected_role is None or role(node) == expected_role):
+        if (node.name or "") == name and has_role(node, push_button, ("push button", "button")):
             return node
     return None
 
@@ -67,9 +80,10 @@ def find_editable_named(root, name):
 
 def find_frame(name):
     desktop = pyatspi.Registry.getDesktop(0)
+    frame = getattr(pyatspi, "ROLE_FRAME", None)
     for application in children(desktop):
         for node in walk(application):
-            if role(node) == "frame" and (node.name or "") == name:
+            if has_role(node, frame, ("frame",)) and (node.name or "") == name:
                 return application, node
     return None
 
@@ -111,7 +125,7 @@ def main():
     application, window = wait_for("SyncPilot frame", lambda: find_frame("SyncPilot"))
     open_settings = wait_for(
         "Open SyncPilot Settings button",
-        lambda: find_named(window, "Open SyncPilot Settings", "push button"),
+        lambda: find_button(window, "Open SyncPilot Settings"),
     )
     press(open_settings)
 
@@ -125,7 +139,7 @@ def main():
     device.queryEditableText().setTextContents("Acceptance device")
     save = wait_for(
         "Save Settings button",
-        lambda: find_named(settings_window, "Save Settings", "push button"),
+        lambda: find_button(settings_window, "Save Settings"),
     )
     press(save)
 
