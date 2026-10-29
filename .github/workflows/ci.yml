@@ -36,7 +36,7 @@ jobs:
           # Commit-pinned Git source per rivet docs/ci.md — the catalog has one
           # moving entry per name and cannot select an older release. crypto
           # backs the app updater (direct dependency), not rivet.
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
           raco pkg install --auto --no-docs crypto
       - name: Domain core tests
         run: raco test racket/
@@ -75,7 +75,7 @@ jobs:
           # resolves against the minimal build — it ships no packages of its
           # own. Commit-pinned Git source per rivet docs/ci.md. crypto backs the
           # app updater (direct dependency).
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
           raco pkg install --auto --no-docs crypto
 
       - name: Build backend bundle and host

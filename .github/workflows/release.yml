@@ -40,7 +40,7 @@ jobs:
       # app updater (direct dependency).
       - name: Install Rivet and crypto
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
           raco pkg install --auto --no-docs crypto
       - name: Install GTK4, WebKitGTK and packaging tooling
         run: |
@@ -111,7 +111,7 @@ jobs:
           variant: CS
           version: '9.3'
       - name: Install Rivet
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+        run: raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
