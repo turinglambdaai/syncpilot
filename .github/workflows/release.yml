@@ -33,7 +33,7 @@ jobs:
       # GitHub does not allow expressions in `uses:`, so this action pin
       # stays literal — keep it in sync with RIVET_PIN above.
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@9d766b4acab672844093204cb4845ef4ef933d2c
+        uses: turlamai/rivet/.github/actions/setup-embed-racket@9d766b4acab672844093204cb4845ef4ef933d2c
       # Installed after the embeddable runtime so the dependency closure
       # resolves against the minimal build — it ships no packages of its
       # own. Commit-pinned Git source per rivet docs/ci.md. crypto backs the
@@ -178,4 +178,4 @@ jobs:
           cp "dist/syncpilot-${VERSION}-linux-arm64.deb" stable-alias/syncpilot-linux-arm64.deb
           cp "dist/syncpilot-${VERSION}-linux-x86_64.AppImage" stable-alias/syncpilot-linux-x64.AppImage
           cp "dist/syncpilot-${VERSION}-linux-aarch64.AppImage" stable-alias/syncpilot-linux-arm64.AppImage
-          gh release upload "$GITHUB_REF_NAME" stable-alias/* --clobber -R turinglambdaai/syncpilot
+          gh release upload "$GITHUB_REF_NAME" stable-alias/* --clobber -R turlamai/syncpilot
