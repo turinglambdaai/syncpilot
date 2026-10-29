@@ -12,7 +12,7 @@ Free Linux maintenance project under AGPL-3.0. Resilio’s separate licence and 
 
 Linux only. The official rslsync binary and its own terms are separate from SyncPilot; Windows/macOS ports are not planned deliveries.
 
-Use [official Releases](https://github.com/turinglambdaai/syncpilot/releases), select an explicitly listed OS/architecture asset, read its release notes and check supplied checksums. An absent asset/platform is not a delivery promise. Preview builds may lack publisher signing or notarization; do not disable system-wide security protections to install them.
+Use [official Releases](https://github.com/turlamai/syncpilot/releases), select an explicitly listed OS/architecture asset, read its release notes and check supplied checksums. An absent asset/platform is not a delivery promise. Preview builds may lack publisher signing or notarization; do not disable system-wide security protections to install them.
 
 ## Your first successful session
 
@@ -38,7 +38,7 @@ Back up data and read the destination release notes first. An in-app update chec
 
 ## Get help
 
-Report problems in [GitHub Issues](https://github.com/turinglambdaai/syncpilot/issues), in English or Chinese. Include the version, OS/architecture, installation channel, steps, expected result and actual result. Reproduce with synthetic input first; do not attach keys, credentials, databases, private source documents or complete logs. Public support has no guaranteed response time.
+Report problems in [GitHub Issues](https://github.com/turlamai/syncpilot/issues), in English or Chinese. Include the version, OS/architecture, installation channel, steps, expected result and actual result. Reproduce with synthetic input first; do not attach keys, credentials, databases, private source documents or complete logs. Public support has no guaranteed response time.
 
 ## Further reading
 

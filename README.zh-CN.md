@@ -2,7 +2,7 @@
 
 [Resilio Sync](https://www.resilio.com/individuals/)（`rslsync`）的 Linux 原生桌面壳——在桌面窗口内嵌**官方 Resilio Web UI**，界面与操作流程和官方 Windows/macOS 客户端完全一致，并补齐 Linux 缺的部分：守护进程管理、开机自启、崩溃看护和官方二进制首次运行安装。
 
-[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/syncpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/syncpilot/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turlamai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turlamai/syncpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/syncpilot/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 [English](README.md) · **中文**
 
@@ -11,7 +11,7 @@ SyncPilot 在原生窗口内运行并管理官方 `rslsync` 守护进程，窗�
   <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
 </p>
 
-SyncPilot 以 [Rivet](https://github.com/turinglambdaai/rivet) 构建：一份 Racket 领域核心（守护进程管理、conf 生成、认证注入代理、设置）通过类型化 RPC 驱动第一方 GTK4 宿主——宿主只做渲染与交互，业务全部在后端。
+SyncPilot 以 [Rivet](https://github.com/turlamai/rivet) 构建：一份 Racket 领域核心（守护进程管理、conf 生成、认证注入代理、设置）通过类型化 RPC 驱动第一方 GTK4 宿主——宿主只做渲染与交互，业务全部在后端。
 
 ## 开始使用
 
@@ -35,7 +35,7 @@ AGPL-3.0 许可的免费 Linux 维护项目。Resilio 的独立许可和服务�
 
 ## 安装
 
-从 [Releases](https://github.com/turinglambdaai/syncpilot/releases/latest) 获取安装包。每次发布都为 **x64** 与 **arm64** 提供完整矩阵：
+从 [Releases](https://github.com/turlamai/syncpilot/releases/latest) 获取安装包。每次发布都为 **x64** 与 **arm64** 提供完整矩阵：
 
 | 格式 | 文件（每版本） | 说明 |
 |---|---|---|
@@ -62,7 +62,7 @@ SyncPilot 有应用内更新器，完整契约见 [docs/UPDATE.zh-CN.md](docs/UP
 Linux（或 WSL2），需要 Racket CS 9.x、CMake 和 GTK4/WebKitGTK 6.0 开发包：
 
 ```bash
-raco pkg install --auto --no-docs https://github.com/turinglambdaai/rivet.git
+raco pkg install --auto --no-docs https://github.com/turlamai/rivet.git
 raco rivet build        # 生成客户端 + 编译后端 bundle + 构建宿主
 raco rivet dev          # 开发循环：改动后自动重建重启
 raco test racket/       # 领域核心测试

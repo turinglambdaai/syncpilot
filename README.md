@@ -2,7 +2,7 @@
 
 A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) (`rslsync`) on Linux — it embeds the **official Resilio Web UI** in a desktop window, so the interface and workflow are exactly the official Windows/macOS client experience, with everything Linux was missing on top: daemon lifecycle, autostart, crash watchdog and a first-run installer for the official binary.
 
-[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turinglambdaai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/syncpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/syncpilot/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turlamai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turlamai/syncpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/syncpilot/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 **English** · [中文](README.zh-CN.md)
 
@@ -11,7 +11,7 @@ SyncPilot runs and manages the official `rslsync` daemon behind a native window 
   <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
 </p>
 
-SyncPilot is built on [Rivet](https://github.com/turinglambdaai/rivet): one Racket domain core (daemon manager, conf generation, auth-injecting proxy, settings) driving a first-party GTK4 host over typed RPC — the host only renders and interacts, all logic lives in the backend.
+SyncPilot is built on [Rivet](https://github.com/turlamai/rivet): one Racket domain core (daemon manager, conf generation, auth-injecting proxy, settings) driving a first-party GTK4 host over typed RPC — the host only renders and interacts, all logic lives in the backend.
 
 ## Start here
 
@@ -35,7 +35,7 @@ Free Linux maintenance project under AGPL-3.0. Resilio’s separate licence and 
 
 ## Install
 
-Grab an installer from [Releases](https://github.com/turinglambdaai/syncpilot/releases/latest). Every release ships the same matrix for **x64** and **arm64**:
+Grab an installer from [Releases](https://github.com/turlamai/syncpilot/releases/latest). Every release ships the same matrix for **x64** and **arm64**:
 
 | Format | Files (per version) | Notes |
 |---|---|---|
@@ -62,7 +62,7 @@ SyncPilot has an in-app updater; the full contract lives in [docs/UPDATE.md](doc
 Linux (or WSL2) with Racket CS 9.x, CMake, and the GTK4/WebKitGTK 6.0 dev packages:
 
 ```bash
-raco pkg install --auto --no-docs https://github.com/turinglambdaai/rivet.git
+raco pkg install --auto --no-docs https://github.com/turlamai/rivet.git
 raco rivet build        # generates clients, compiles the backend bundle, builds the host
 raco rivet dev          # develop loop: rebuild + relaunch on change
 raco test racket/       # domain-core tests

@@ -9,7 +9,7 @@ This page is the single source of truth; the README summarizes it.
 
 - Channel: `stable` — the signed channel manifest is **`update-stable.json`**,
   fetched from the moving
-  `https://github.com/turinglambdaai/syncpilot/releases/latest/download`
+  `https://github.com/turlamai/syncpilot/releases/latest/download`
   location. Artifact URLs *inside* the manifest are pinned to the concrete
   release tag.
 - The manifest is **Ed25519-signed** (key id `syncpilot-2026-10`). The public
@@ -120,6 +120,6 @@ protect you, not to sell to you.
 
 Linux 维护模式：只补第三方兼容、鉴权/进程恢复、安装形态的验证更新交接与反馈；不新增平台/云/收费层。
 
-执行场景与完成标准见[本仓审查 issue](https://github.com/turinglambdaai/syncpilot/issues/10)及家族[交付标准](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/PRODUCT-STANDARD.md)。未完成的跨平台、硬件或真实支付验证仍是显式门禁；本节不表示这些验证已通过。后续一次认领一个切片，证据回填本文件与 issue。
+执行场景与完成标准见[本仓审查 issue](https://github.com/turlamai/syncpilot/issues/10)及家族[交付标准](https://github.com/turlamai/turlamai.github.io/blob/master/docs/PRODUCT-STANDARD.md)。未完成的跨平台、硬件或真实支付验证仍是显式门禁；本节不表示这些验证已通过。后续一次认领一个切片，证据回填本文件与 issue。
 
 切片 2026-10-24（更新交接 + 恢复文档）：已交付——上文各安装形态交接矩阵、恢复与故障模式、信任边界三节，验证证据见 issue #10 结单评论。

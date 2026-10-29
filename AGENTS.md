@@ -11,7 +11,7 @@ Decision `2026-10-auth-1`: No commercial Permit credentials, Commerce checkout o
 
 ## 这是什么
 
-SyncPilot 以 Rivet（github.com/turinglambdaai/rivet）构建：一份 Racket 领域核心，
+SyncPilot 以 Rivet（github.com/turlamai/rivet）构建：一份 Racket 领域核心，
 通过 Rivet 类型化 RPC（RVT1 协议）驱动第一方原生 UI 薄壳。
 
 SyncPilot 仅面向 Linux：
@@ -65,19 +65,19 @@ suite 只要未执行、超时、失败或没有产生本次运行的新证据�
 ## 组合定位（Portfolio placement）
 
 - 当前决策（2026-10-v2）：免费保活。具体价格、免费/付费边界和开卖门禁以本仓 [PRICING.md](PRICING.md) 为唯一权威；旧版收费候选与早鸟方案已被替代。
-- 组合归属：[PORTFOLIO](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/PORTFOLIO.md)。当前全部产品开发中、没有实际用户；目标定价不表示已经开卖，不因此立即给开发版加收费墙。
+- 组合归属：[PORTFOLIO](https://github.com/turlamai/turlamai.github.io/blob/master/PORTFOLIO.md)。当前全部产品开发中、没有实际用户；目标定价不表示已经开卖，不因此立即给开发版加收费墙。
 - 免费产品不接商业激活；付费层先实现可验证价值，再接 Commerce/Permit。优先完成本仓既有产品审查 issue；不修改现行源码 LICENSE。
 
 ## 产品交付与下一步（2026-10-23）
 
-- 家族[交付标准](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/PRODUCT-STANDARD.md)与[组合策略](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/PORTFOLIO.md)是共用政策；本仓具体行为以 `docs/UPDATE.md` 为准，不复制五库依赖图。
-- 当前执行入口：[产品审查 issue](https://github.com/turinglambdaai/syncpilot/issues/10)。Linux 维护模式：只补第三方兼容、鉴权/进程恢复、安装形态的验证更新交接与反馈；不新增平台/云/收费层。
+- 家族[交付标准](https://github.com/turlamai/turlamai.github.io/blob/master/docs/PRODUCT-STANDARD.md)与[组合策略](https://github.com/turlamai/turlamai.github.io/blob/master/PORTFOLIO.md)是共用政策；本仓具体行为以 `docs/UPDATE.md` 为准，不复制五库依赖图。
+- 当前执行入口：[产品审查 issue](https://github.com/turlamai/syncpilot/issues/10)。Linux 维护模式：只补第三方兼容、鉴权/进程恢复、安装形态的验证更新交接与反馈；不新增平台/云/收费层。
 - 开工先检查干净工作树与远端，以 fast-forward-only 更新并记录 SHA；共享文件一次一个写入者，保留其他 checkout 的未提交工作。
 - 每次只完成一个可验收切片，记录 owned files、依赖 pin、命令/平台/产物证据和回滚。已实现、已发布、实机验收分别陈述；不修改 requirements 或复用旧证据来制造通过。
 
 ## Documentation languages
 
-Public default documentation is English; maintain complete Chinese user paths in `*.zh-CN.md`, with reciprocal links. Update both languages when prices, quotas, installation, recovery, privacy or supported platforms change. API/protocol identifiers and commands remain unchanged; do not maintain a second normative protocol or implementation. Follow the [family language policy](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/DOCUMENTATION-LANGUAGES.md). Existing internal notes are not a claim that every document is bilingual.
+Public default documentation is English; maintain complete Chinese user paths in `*.zh-CN.md`, with reciprocal links. Update both languages when prices, quotas, installation, recovery, privacy or supported platforms change. API/protocol identifiers and commands remain unchanged; do not maintain a second normative protocol or implementation. Follow the [family language policy](https://github.com/turlamai/turlamai.github.io/blob/master/docs/DOCUMENTATION-LANGUAGES.md). Existing internal notes are not a claim that every document is bilingual.
 
 ## Public product documentation
 
