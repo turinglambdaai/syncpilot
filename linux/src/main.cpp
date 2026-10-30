@@ -30,6 +30,7 @@
 #endif
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -805,6 +806,19 @@ void on_shutdown(GApplication*, gpointer) {
     trace("startup backend stopped");
   }
   if (g_state.backend != nullptr) {
+    // The manager learns about exit only through this RPC (issue #16): with
+    // keep_daemon_on_exit=false the daemon must be stopped while the server
+    // still serves; with it on, the RPC is a no-op round-trip. Bounded wait
+    // — a wedged backend degrades to the daemon outliving the app, never to
+    // a hang at exit.
+    if (g_state.api != nullptr) {
+      try {
+        (void)g_state.api->daemon_autostop_within(std::chrono::milliseconds{8000});
+        trace("daemon autostop settled");
+      } catch (...) {
+        // Exit must not depend on the daemon stop outcome.
+      }
+    }
     g_state.backend->stop();
     trace("backend stopped");
   }
