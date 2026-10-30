@@ -233,6 +233,17 @@
   (restart! mgr)
   (status->record (manager-status mgr)))
 
+;; Exit-path helper: the host calls this during its orderly shutdown, while
+;; the server is still serving. Nothing else in the exit path reaches the
+;; manager, so without this RPC a keep_daemon_on_exit=false daemon would
+;; keep running after the app is gone. With the setting on, the daemon is
+;; left running — the point of the setting — and this is a no-op.
+(define-rpc (daemon-autostop : DaemonStatus)
+  (define mgr (car (require-runtime 'daemon-autostop)))
+  (unless (app-settings-keep-daemon-on-exit (manager-settings mgr))
+    (stop! mgr))
+  (status->record (manager-status mgr)))
+
 (define-rpc (probe-port : PortProbe)
   (define mgr (car (require-runtime 'probe-port)))
   (define probe

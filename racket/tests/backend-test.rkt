@@ -186,6 +186,44 @@
                 3))
   (check-equal? probe "unreachable"))
 
+(test-case "daemon-autostop stops the daemon when keep is off"
+  ;; The exit-path contract: keep_daemon_on_exit is still #f from the
+  ;; earlier save-settings, so the autostop is a normal stop.
+  (define-values (started _e1)
+    (call-until "daemon-start" '() (lambda (s) (equal? (list-ref s 0) "running")) 3))
+  (check-equal? (list-ref started 0) "running")
+  (define-values (status _e2 err2?) (call "daemon-autostop"))
+  (check-false err2?)
+  (check-equal? (list-ref status 0) "stopped")
+  (check-true
+   (wait-until 5
+               (lambda ()
+                 (with-handlers ([exn:fail? (lambda (_) #t)])
+                   (define-values (cin cout)
+                     (tcp-connect "127.0.0.1" daemon-port))
+                   (close-output-port cout)
+                   (close-input-port cin)
+                   #f)))
+   "autostop must kill the daemon when keep_daemon_on_exit is off"))
+
+(test-case "daemon-autostop is a no-op when keep is on"
+  (define-values (_s _e1 err1?)
+    (call "save-settings"
+          (list (path->string fake-daemon) daemon-port "syncpilot" "test-device"
+                #t #t #t #t "en")))
+  (check-false err1?)
+  (define-values (started _e2)
+    (call-until "daemon-start" '() (lambda (s) (equal? (list-ref s 0) "running")) 3))
+  (check-equal? (list-ref started 0) "running")
+  (define-values (status _e3 err3?) (call "daemon-autostop"))
+  (check-false err3?)
+  (check-equal? (list-ref status 0) "running"
+                "autostop must leave the daemon alone when keep is on")
+  ;; Restore the stopped state for the remaining tests.
+  (define-values (stopped _e4 err4?) (call "daemon-stop"))
+  (check-false err4?)
+  (check-equal? (list-ref stopped 0) "stopped"))
+
 (test-case "regenerate-password keeps has-password true"
   (define-values (s _e err?) (call "regenerate-password"))
   (check-false err?)

@@ -6,6 +6,12 @@ All notable changes to SyncPilot are documented here. Format: [Keep a Changelog]
 
 ### Fixed
 
+- **`keep_daemon_on_exit=false` is honored at app exit again.** The exit
+  path never reached the manager, so the daemon survived every exit even
+  when the user explicitly asked it not to (keep=true always worked — the
+  daemon is meant to survive and does). The host now issues a
+  `daemon-autostop` RPC during its orderly shutdown, before the backend
+  stops: keep=false ends the daemon, keep=true pays one no-op round-trip.
 - **The Linux acceptance e2e survives at-spi2 3.x role-name drift (Ubuntu
   26.04+).** pyatspi 3.x reports the push-button role display name as
   "button" where 2.x says "push button", so the acceptance driver timed out
