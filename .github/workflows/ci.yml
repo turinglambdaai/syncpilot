@@ -1,6 +1,7 @@
 name: CI
 on:
   push:
+    branches: [main]
   pull_request:
 
 # Rivet is consumed as a commit-pinned Git source — the hold-back form rivet
@@ -11,6 +12,10 @@ env:
   # Single source of truth for the rivet pin (same value as release.yml);
   # every install step below references this so a bump is one edit.
   RIVET_PIN: 9d766b4acab672844093204cb4845ef4ef933d2c
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release-metadata:
     name: Release metadata (VERSION alignment)
