@@ -2,7 +2,7 @@
 
 A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) (`rslsync`) on Linux — it embeds the **official Resilio Web UI** in a desktop window, so the interface and workflow are exactly the official Windows/macOS client experience, with everything Linux was missing on top: daemon lifecycle, autostart, crash watchdog and a first-run installer for the official binary.
 
-[![release](https://img.shields.io/github/v/release/turinglambdaai/syncpilot)](https://github.com/turlamai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turlamai/syncpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/syncpilot/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/turlamai/syncpilot)](https://github.com/turlamai/syncpilot/releases/latest) ![platform](https://img.shields.io/badge/platform-Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turlamai/syncpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/syncpilot/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 **English** · [中文](README.zh-CN.md)
 
