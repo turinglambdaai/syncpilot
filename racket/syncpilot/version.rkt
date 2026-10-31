@@ -34,4 +34,4 @@
 ;; pipeline pins artifact URLs to the concrete tag; the manifest itself is
 ;; always fetched from the moving "latest" location.
 (define default-update-base-url
-  "https://github.com/turinglambdaai/syncpilot/releases/latest/download")
+  "https://github.com/turlamai/syncpilot/releases/latest/download")

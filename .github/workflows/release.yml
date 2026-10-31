@@ -19,7 +19,30 @@ env:
   # install step below references this so a bump is one edit.
   RIVET_PIN: 9d766b4acab672844093204cb4845ef4ef933d2c
 jobs:
+  signing-preflight:
+    name: Release signing preflight (before expensive builds)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release version and Ed25519 key identity
+        env:
+          UPDATE_ED25519_PRIVATE_KEY_B64: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/check-release-version.sh "$GITHUB_REF_NAME"
+          if [[ -z "${UPDATE_ED25519_PRIVATE_KEY_B64:-}" ]]; then
+            echo "::error::UPDATE_ED25519_PRIVATE_KEY_B64 is required; refusing unsigned release"
+            exit 1
+          fi
+          umask 077
+          KEY_DER="$RUNNER_TEMP/update-ed25519-private.der"
+          trap 'rm -f "$KEY_DER"' EXIT
+          printf '%s' "$UPDATE_ED25519_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
+          bash scripts/check-release-signing-key.sh "$KEY_DER"
+
   linux:
+    needs: [signing-preflight]
     name: Linux (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -124,27 +147,28 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p dist
           mv artifacts/linux-x64/* artifacts/linux-arm64/* dist/
-          # The update feed keeps the 0.6.1 contract: one signed
-          # update-stable.json whose artifacts are the per-arch tar.gz
-          # payloads the updater downloads, signed with the long-lived
-          # syncpilot-2026-10 key. rivet 0.6.1's built-in manifest points
-          # at the portable zip instead, which the SyncPilot updater does
-          # not consume. The script also emits the byte-identical twin
-          # update-manifest.json (family-standard name), so the release
-          # ships both names. Missing secret → warn and publish without
-          # either.
-          update_asset=""
-          if [[ -n "${UPDATE_ED25519_PRIVATE_KEY_B64:-}" ]]; then
-            KEY_DER="$RUNNER_TEMP/update-ed25519-private.der"
-            printf '%s' "$UPDATE_ED25519_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
-            scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_DER"
-            # gh release create resolves file args from their final working
-            # directory (dist/), so the manifests ride under their bare
-            # names.
-            update_asset="update-stable.json update-manifest.json"
-          else
-            echo "::warning::UPDATE_ED25519_PRIVATE_KEY_B64 not set — release ships without update-stable.json"
-          fi
+          # The updater consumes signed tar.gz payload metadata. Never
+          # publish any release, even a draft, without a trusted Ed25519
+          # manifest. The signing preflight already rejected absent/wrong
+          # credentials before launching the expensive Linux matrix.
+          umask 077
+          KEY_DER="$RUNNER_TEMP/update-ed25519-private.der"
+          trap 'rm -f "$KEY_DER"' EXIT
+          [[ -n "${UPDATE_ED25519_PRIVATE_KEY_B64:-}" ]] || {
+            echo "::error::UPDATE_ED25519_PRIVATE_KEY_B64 missing at publish"
+            exit 1
+          }
+          printf '%s' "$UPDATE_ED25519_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
+          bash scripts/check-release-signing-key.sh "$KEY_DER"
+          bash scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_DER"
+          test -s dist/update-stable.json && test -s dist/update-manifest.json || {
+            echo "::error::signed update feed missing"
+            exit 1
+          }
+          cmp -s dist/update-stable.json dist/update-manifest.json || {
+            echo "::error::signed update feed aliases differ"
+            exit 1
+          }
           awk -v header="## [${VERSION}]" '
             index($0, header) == 1 {on=1; next}
             on && /^## / {exit}
@@ -153,6 +177,7 @@ jobs:
           cd dist
           for f in *.sha256; do [ -s "$f" ] || rm -f "$f"; done
           cat *.sha256 > SHA256SUMS
+          sha256sum --check SHA256SUMS
           # every file a sidecar or SHA256SUMS describes must ship too, so
           # `sha256sum -c SHA256SUMS` resolves against the release alone
           gh release create "$GITHUB_REF_NAME" \
@@ -160,7 +185,7 @@ jobs:
             --notes-file /tmp/notes.md \
             *.tar.gz *.deb *.rpm *.AppImage *.zip \
             *.sbom.cdx.json *-THIRD_PARTY_NOTICES.txt \
-            *.sha256 SHA256SUMS $update_asset
+            *.sha256 SHA256SUMS update-stable.json update-manifest.json
       - name: Stable alias copies (versionless direct-download links)
         env:
           GH_TOKEN: ${{ github.token }}
