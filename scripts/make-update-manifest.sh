@@ -52,7 +52,7 @@ cat > "$SCRIPT" <<RKT
          racket/file
          racket/format)
 (define version "$VERSION")
-(define base-url "${RELEASE_ASSET_BASE_URL:-https://github.com/turinglambdaai/syncpilot/releases/download/$TAG}")
+(define base-url "${RELEASE_ASSET_BASE_URL:-https://github.com/turlamai/syncpilot/releases/download/$TAG}")
 (define dist (path->complete-path "$DIST"))
 (define key-path (path->complete-path "$KEY"))
 (define key-id "syncpilot-2026-10")
