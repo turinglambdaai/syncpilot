@@ -7,9 +7,7 @@ A native desktop shell for [Resilio Sync](https://www.resilio.com/individuals/) 
 **English** · [中文](README.zh-CN.md)
 
 SyncPilot runs and manages the official `rslsync` daemon behind a native window that shows the official Resilio Web UI. It talks to the daemon over loopback only — its control channel stays local; the official daemon transfers configured files to peers.
-<p align="center">
-  <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
-</p>
+
 
 SyncPilot is built on [Rivet](https://github.com/turlamai/rivet): one Racket domain core (daemon manager, conf generation, auth-injecting proxy, settings) driving a first-party GTK4 host over typed RPC — the host only renders and interacts, all logic lives in the backend.
 
