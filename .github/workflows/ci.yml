@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify release version alignment
         run: bash scripts/check-release-version.sh
+      - name: Release signing negative tests (offline, no secrets)
+        run: bash scripts/test-release-signing.sh
 
   racket-tests:
     strategy:
