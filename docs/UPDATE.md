@@ -18,6 +18,16 @@ This page is the single source of truth; the README summarizes it.
   unsigned file — are rejected before anything is offered or downloaded.
 - Each GitHub release also ships a plain `<tarball>.sha256` sidecar for
   manual verification.
+- A tagged release is **blocked before Linux builds** if the Ed25519 signing
+  secret is absent, malformed or does not match the public key embedded in
+  shipped clients. The publish step checks again and requires both signed
+  `update-stable.json` and byte-identical `update-manifest.json` before any
+  GitHub Release is created. CI tests missing, malformed and unrelated keys
+  offline; the real release private key is never part of CI test fixtures.
+- SyncPilot currently ships **Linux only**; no paid publisher certificate is
+  required for DEB, RPM or AppImage. Update-feed signing is independent of
+  OS executable signing. No Apple notarization or Windows Authenticode is
+  claimed for this product.
 
 ## Check
 
