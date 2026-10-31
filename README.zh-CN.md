@@ -7,10 +7,6 @@
 [English](README.md) · **中文**
 
 SyncPilot 在原生窗口内运行并管理官方 `rslsync` 守护进程，窗口里显示的就是官方 Resilio Web UI。它仅通过环回地址与守护进程通信——控制通道位于本地；官方守护进程会将配置的文件同步给对端。
-<p align="center">
-  <img src="docs/screenshot.png" width="900" alt="The official Resilio Web UI running inside SyncPilot" />
-</p>
-
 SyncPilot 以 [Rivet](https://github.com/turlamai/rivet) 构建：一份 Racket 领域核心（守护进程管理、conf 生成、认证注入代理、设置）通过类型化 RPC 驱动第一方 GTK4 宿主——宿主只做渲染与交互，业务全部在后端。
 
 ## 开始使用
